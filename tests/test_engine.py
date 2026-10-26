@@ -26,8 +26,9 @@ def find(parts, name):
 def test_base_cabinet_dimensions():
     cab = Cabinet("B1", "base", 30, 34.5, 24, doors=2, adj_shelves=1)
     parts = build_parts(cab, job_with(cab))
-    side, bottom = find(parts, "Side"), find(parts, "Bottom")
-    assert (side.length, side.width, side.qty) == (34.5, 24, 2)
+    side, bottom = find(parts, "Side L"), find(parts, "Bottom")
+    assert (side.length, side.width, side.qty) == (34.5, 24, 1)
+    assert find(parts, "Side R").qty == 1
     assert bottom.length == pytest.approx(28.5)          # 30 - 2 x 3/4
     front, rear = find(parts, "Top Rail Front"), find(parts, "Top Rail Rear")
     assert (front.width, rear.width) == (4.0, 4.0)
@@ -115,7 +116,7 @@ def test_full_run_writes_valid_dxfs(tmp_path):
     result = run_job(SAMPLE, PRICING, tmp_path)
     dxfs = list((tmp_path / "dxf").glob("*.dxf"))
     assert len(dxfs) == result["files"]["dxf_count"] > 0
-    doc = ezdxf.readfile(tmp_path / "dxf" / "B1_Side.dxf")
+    doc = ezdxf.readfile(tmp_path / "dxf" / "B1_Side_R.dxf")
     layers = {l.dxf.name for l in doc.layers}
     assert "CUT_THRU_T0.750" in layers
     assert any(l.startswith("DRILL_5MM") for l in layers)
@@ -149,7 +150,7 @@ def test_connector_positions_sit_on_the_32mm_grid():
 def test_dowel_cabinet_bores_both_parts():
     cab = Cabinet("B1", "base", 30, 34.5, 24, doors=2, joinery="dowel")
     parts = build_parts(cab, job_with(cab))
-    side, bottom = find(parts, "Side"), find(parts, "Bottom")
+    side, bottom = find(parts, "Side L"), find(parts, "Bottom")
     side_dowels = [o for o in side.machining if o["op"] == "drill" and o["dia_mm"] == 8]
     edge_dowels = [o for o in bottom.machining if o["op"] == "edge_drill"]
     n_bottom = len(connector_positions(24 - 0.75 - 0.25, METHODS["dowel"]))
@@ -165,7 +166,7 @@ def test_dowel_cabinet_bores_both_parts():
 
 def test_confirmat_uses_through_holes_and_caps():
     cab = Cabinet("W1", "wall", 30, 30, 12, doors=2, joinery="confirmat")
-    side = find(build_parts(cab, job_with(cab)), "Side")
+    side = find(build_parts(cab, job_with(cab)), "Side L")
     assert any(o.get("through") and o["dia_mm"] == 7 for o in side.machining)
     c = cabinet_connectors(cab, job_with(cab))
     assert c["confirmat"] == c["confirmat_cap"] > 0
@@ -184,7 +185,7 @@ def test_cam_dowel_puts_cams_at_the_ends_and_dowels_between():
 def test_clamex_cuts_p_grooves_and_access_holes():
     cab = Cabinet("BC1", "bookcase", 30, 84, 12, adj_shelves=4, joinery="lamello_clamex")
     parts = build_parts(cab, job_with(cab))
-    assert any(o["op"] == "pgroove" for o in find(parts, "Side").machining)
+    assert any(o["op"] == "pgroove" for o in find(parts, "Side L").machining)
     top = find(parts, "Top").machining
     assert any(o["op"] == "pgroove" and o["orient"] == "edge" for o in top)
     assert any(o.get("role") == "access" for o in top)
@@ -206,7 +207,7 @@ def test_unknown_joinery_is_flagged():
 def test_shelf_pins_stay_clear_of_fixed_parts():
     cab = Cabinet("BC1", "bookcase", 30, 84, 12, adj_shelves=4)
     parts = build_parts(cab, job_with(cab))
-    side = find(parts, "Side")
+    side = find(parts, "Side L")
     fixed_y = 0.75 + (84 - 1.5) / 2
     pins = [o for o in side.machining if o.get("role") == "shelf_pin"]
     assert pins and all(abs(o["y"] - fixed_y) > 1.375 for o in pins)
@@ -264,12 +265,12 @@ def test_plain_material_is_not_grain_matched():
 def test_open_cabinets_use_exposed_material_with_correct_grain():
     mw = Cabinet("MW1", "microwave", 30, 36, 15, doors=2, opening_height=17)
     parts = build_parts(mw, grained_job(mw), materials=MATS)
-    for name in ("Side", "Bottom", "Top", "Fixed Shelf"):
+    for name in ("Side L", "Side R", "Bottom", "Top", "Fixed Shelf"):
         p = find(parts, name)
         assert p.material == "WO-RIFT-34" and p.exposed
     assert find(parts, "Back").material == "WO-RIFT-14"
     # grain: sides vertical (length = height), horizontals run side to side
-    assert find(parts, "Side").length == 36
+    assert find(parts, "Side L").length == 36
     assert find(parts, "Fixed Shelf").length == pytest.approx(28.5)
     # doors only cover the area above the fixed shelf
     door = find(parts, "Door L")
@@ -279,9 +280,9 @@ def test_open_cabinets_use_exposed_material_with_correct_grain():
 def test_finished_ends_use_exposed_material():
     cab = Cabinet("B1", "base", 18, 34.5, 24, doors=1, finished_ends="L")
     parts = build_parts(cab, grained_job(cab), materials=MATS)
-    assert find(parts, "Side (finished)").qty == 1
-    assert find(parts, "Side (finished)").material == "WO-RIFT-34"
-    assert find(parts, "Side").qty == 1 and find(parts, "Side").material == "MEL-WHT-34"
+    assert find(parts, "Side L (finished)").qty == 1
+    assert find(parts, "Side L (finished)").material == "WO-RIFT-34"
+    assert find(parts, "Side R").qty == 1 and find(parts, "Side R").material == "MEL-WHT-34"
 
 
 def test_microwave_without_appliance_spec_is_flagged():
@@ -290,8 +291,9 @@ def test_microwave_without_appliance_spec_is_flagged():
 
 
 def test_white_oak_sample_runs_and_writes_joinery_layers(tmp_path):
+    from millwork_mcp.machine import PANEL_SAW
     data = json.loads((ROOT / "examples" / "white_oak_kitchen.json").read_text())
-    r = run_job(data, PRICING, tmp_path)
+    r = run_job(data, PRICING, tmp_path, machine=PANEL_SAW)
     assert r["grain_match_groups"] == 7
     assert set(r["joinery"]) == set(METHODS)
     layers = set()
@@ -307,7 +309,7 @@ def test_white_oak_sample_runs_and_writes_joinery_layers(tmp_path):
 def test_joint_bores_stay_out_of_the_back_dado():
     for method in METHODS:
         cab = Cabinet("B1", "base", 30, 34.5, 24, doors=2, joinery=method)
-        side = find(build_parts(cab, job_with(cab)), "Side")
+        side = find(build_parts(cab, job_with(cab)), "Side L")
         dado_front, dado_rear = 24 - 0.75 - 0.25, 24 - 0.75
         for o in side.machining:
             if o["op"] in ("drill", "pgroove") and o.get("role") != "shelf_pin":
@@ -324,7 +326,7 @@ from millwork_mcp.export import route, op_summary
 def test_shelf_pin_sides_route_to_cnc_and_plain_panels_stay_on_the_saw():
     cab = Cabinet("W1", "wall", 30, 30, 12, doors=2, adj_shelves=2)
     parts = build_parts(cab, job_with(cab))
-    side = find(parts, "Side")
+    side = find(parts, "Side L")
     assert route(side) == "saw > CNC"
     assert op_summary(side)["shelf_pin_holes"] > 0
     assert route(find(parts, "Back")) == "saw"
@@ -333,10 +335,11 @@ def test_shelf_pin_sides_route_to_cnc_and_plain_panels_stay_on_the_saw():
 
 
 def test_cnc_list_and_cnc_hours(tmp_path):
-    r = run_job(SAMPLE, PRICING, tmp_path)
+    from millwork_mcp.machine import PANEL_SAW
+    r = run_job(SAMPLE, PRICING, tmp_path, machine=PANEL_SAW)
     rows = (tmp_path / "cnc_list.csv").read_text().splitlines()
     assert rows[0].startswith("cabinet,part,material,qty,program,shelf_pin_holes")
-    assert any(",Side," in row for row in rows[1:])
+    assert any(",Side L," in row for row in rows[1:])
     assert not any(",Back," in row for row in rows[1:])
     lab = r["labor"]
     assert lab["cnc_hours"] > 0 and lab["cnc_pieces"] > 0
@@ -356,7 +359,7 @@ def test_wall_attached_cabinets_get_quarter_back_and_two_ply_nailers():
             assert n.material == "PLY-34" and MATS["PLY-34"].thickness == 0.75
             assert (n.length, n.width, n.qty) == (cab.width - 1.5, 4.0, 1)
             assert n.machining, "nailer ends must be bored for the case joinery"
-        side = find(parts, "Side")
+        side = find(parts, "Side L")
         behind_back = [o for o in side.machining if o["x"] > cab.depth - 0.75]
         assert behind_back, "side must be bored for the nailers behind the back"
         ys = sorted(o["y"] for o in behind_back)
@@ -375,11 +378,11 @@ def test_prelam_finished_end_is_laminated_before_machining():
     job = job_with(cab)
     job.finished_end_laminate = "HPL-WHT"
     parts = build_parts(cab, job, materials=MATS)
-    fin = find(parts, "Side (finished, pre-lam)")
+    fin = find(parts, "Side L (finished, pre-lam)")
     assert fin.material == "MEL-WHT-34" and fin.laminate == "HPL-WHT" and fin.qty == 1
     assert fin.prelam_blank == (34.5 + 1.0, 24 + 1.0)
     assert route(fin) == "prelam > saw > CNC"
-    assert find(parts, "Side").qty == 1 and route(find(parts, "Side")) == "saw > CNC"
+    assert find(parts, "Side R").qty == 1 and route(find(parts, "Side R")) == "saw > CNC"
     from millwork_mcp.nesting import prepare_for_saw
     saw = prepare_for_saw(parts)
     core = [p for p in saw if p.name.startswith("PRELAM core")]
@@ -444,7 +447,7 @@ def test_half_inch_casework_uses_5mm_dowels_and_half_inch_geometry():
     job = job_with(cab)
     job.case_material = "MEL-WHT-12"
     parts = build_parts(cab, job, materials=MATS)
-    side, bottom = find(parts, "Side"), find(parts, "Bottom")
+    side, bottom = find(parts, "Side L"), find(parts, "Bottom")
     joint_bores = [o for o in side.machining if o["op"] == "drill" and o.get("role") != "shelf_pin"]
     assert joint_bores and {o["dia_mm"] for o in joint_bores} == {5}
     assert all(o["depth"] <= 0.5 - 0.125 for o in joint_bores)
@@ -459,7 +462,7 @@ def test_half_inch_casework_uses_5mm_dowels_and_half_inch_geometry():
 def test_three_quarter_casework_uses_8mm_dowels():
     cab = Cabinet("B1", "base", 30, 34.5, 24, doors=2)
     parts = build_parts(cab, job_with(cab), materials=MATS)
-    joint_bores = [o for o in find(parts, "Side").machining
+    joint_bores = [o for o in find(parts, "Side L").machining
                    if o["op"] == "drill" and o.get("role") != "shelf_pin"]
     assert {o["dia_mm"] for o in joint_bores} == {8}
     bottom_row = sorted(o["x"] for o in joint_bores if o["y"] < 1)
@@ -470,3 +473,132 @@ def test_off_spec_thickness_is_flagged():
     job = job_with(Cabinet("B1", "base", 18, 34.5, 24, doors=1))
     job.case_material = "BB-58"      # 5/8" is not in the dowel spec
     assert "outside the dowel spec" in " ".join(review_job(job, MATS))
+
+
+
+def test_right_side_is_the_mirror_of_the_left_side():
+    cab = Cabinet("B1", "base", 30, 34.5, 24, doors=2, adj_shelves=1)
+    parts = build_parts(cab, job_with(cab))
+    left, right = find(parts, "Side L"), find(parts, "Side R")
+    assert len(left.machining) == len(right.machining)
+    for a, b in zip(left.machining, right.machining):
+        if a["op"] == "dado":
+            assert b["x"] == pytest.approx(24 - a["x"] - a["width"])
+        else:
+            assert b["x"] == pytest.approx(24 - a["x"]) and b.get("y") == a.get("y")
+
+
+
+# ---------------------------------------------------------------- nested router (Stiles / HOMAG)
+from millwork_mcp.machine import PANEL_SAW, machine_from_pricing
+from millwork_mcp.router_nest import nest_job_router
+from millwork_mcp.construction import build_job_parts
+from millwork_mcp.export_woodwop import _to_sheet
+
+NESTED = machine_from_pricing(PRICING)
+WHITE_OAK = json.loads((ROOT / "examples" / "white_oak_kitchen.json").read_text())
+
+
+def _router_nests(data):
+    return nest_job_router(build_job_parts(job_from_dict(data), materials=MATS), MATS, NESTED)
+
+
+def test_shop_profile_is_the_stiles_nested_router():
+    assert NESTED.is_nested and "Stiles" in NESTED.name
+    assert NESTED.part_spacing >= NESTED.tool_dia
+
+
+@pytest.mark.parametrize("data", [SAMPLE, WHITE_OAK])
+def test_router_nest_keeps_tool_spacing_and_margins(data):
+    m = NESTED
+    for res in _router_nests(data).values():
+        assert not res.unplaced
+        for sh in res.sheets:
+            P = sh.placements
+            for i, a in enumerate(P):
+                assert a.x >= m.sheet_margin - 1e-3 and a.y >= m.sheet_margin - 1e-3
+                assert a.x + a.length <= sh.length - m.sheet_margin + 1e-3
+                assert a.y + a.width <= sh.width - m.sheet_margin + 1e-3
+                for b in P[i + 1:]:
+                    gap = max(b.x - (a.x + a.length), a.x - (b.x + b.length),
+                              b.y - (a.y + a.width), a.y - (b.y + b.width))
+                    assert gap >= m.part_spacing - 1e-3, (a.label, b.label, gap)
+
+
+def test_router_nest_uses_no_more_sheets_than_the_panel_saw():
+    saw = estimate_job(job_from_dict(SAMPLE), PRICING, machine=PANEL_SAW)
+    router = estimate_job(job_from_dict(SAMPLE), PRICING, machine=NESTED)
+    sheets = lambda e, code: sum(m["sheets"] for m in e["materials"] if m["material"] == code)
+    assert sheets(router, "MEL-WHT-34") <= sheets(saw, "MEL-WHT-34")
+
+
+def test_grained_parts_are_never_rotated_on_the_router():
+    for key, res in _router_nests(WHITE_OAK).items():
+        core = MATS[key.split("+")[0]]
+        if core.grained:
+            assert all(not p.rotated for sh in res.sheets for p in sh.placements), key
+
+
+def test_grain_matched_fronts_stay_together_in_sequence_on_the_nest():
+    res = _router_nests(WHITE_OAK)["WO-RIFT-34"]
+    placed = [p for sh in res.sheets for p in sh.placements if p.group == "DB1-GM"]
+    assert [p.seq for p in sorted(placed, key=lambda p: p.x)] == [1, 2, 3, 4]
+    assert len({sh.index for sh in res.sheets for p in sh.placements if p.group == "DB1-GM"}) == 1
+    assert len({round(p.y, 3) for p in placed}) == 1          # one column, figure runs down the bank
+    xs = sorted(placed, key=lambda p: p.x)
+    for a, b in zip(xs, xs[1:]):
+        assert b.x - (a.x + a.length) == pytest.approx(NESTED.part_spacing, abs=1e-3)
+
+
+def test_prelam_parts_nest_on_laminated_full_sheets():
+    nests = _router_nests(SAMPLE)
+    assert "MEL-WHT-34+HPL-WHT" in nests
+    est = estimate_job(job_from_dict(SAMPLE), PRICING, machine=NESTED)
+    lam = [m for m in est["materials"] if m["material"] == "HPL-WHT"]
+    assert lam and lam[0]["sheets"] == nests["MEL-WHT-34+HPL-WHT"].sheet_count
+    assert est["labor"]["prelam_press_hours"] > 0
+
+
+def test_parts_are_rotated_not_mirrored_onto_the_sheet():
+    res = _router_nests(SAMPLE)["MEL-WHT-34"]
+    pl = next(p for sh in res.sheets for p in sh.placements if p.label == "T1 Side L")
+    # front-bottom corner of the part's face and the back dado must keep their handedness
+    p0 = _to_sheet(pl, 0, 0)
+    px = _to_sheet(pl, 1, 0)
+    py = _to_sheet(pl, 0, 1)
+    det = ((px[0] - p0[0]) * (py[1] - p0[1]) - (px[1] - p0[1]) * (py[0] - p0[0]))
+    assert det == pytest.approx(1.0)
+
+
+def test_woodwop_sheet_dxf_layers_and_units(tmp_path):
+    r = run_job(SAMPLE, PRICING, tmp_path, machine=NESTED)
+    sheet = ezdxf.readfile(r["files"]["sheet_dxfs"][0])
+    assert sheet.units == ezdxf.units.MM
+    layers = {l.dxf.name for l in sheet.layers}
+    assert any(l.startswith("Werkstk_") for l in layers)
+    assert any(l.startswith("V_BohrLS_") for l in layers)
+    assert f"V_Fraes_-0_2T{NESTED.contour_tool}" in layers
+    wp = next(e for e in sheet.modelspace() if e.dxf.layer.startswith("Werkstk_"))
+    xs = [p[0] for p in wp.get_points()]
+    assert max(xs) == pytest.approx(97 * 25.4, abs=0.01)
+
+
+def test_edge_bores_go_to_the_horizontal_borer_when_the_router_has_none(tmp_path):
+    from dataclasses import replace
+    r = run_job(SAMPLE, PRICING, tmp_path / "a", machine=NESTED)
+    rows = (tmp_path / "a" / "nests" / "edge_boring_list.csv").read_text().splitlines()
+    assert len(rows) - 1 == r["files"]["edge_bores"] > 0
+    assert r["labor"]["edge_boring_hours"] > 0
+    with_h = replace(NESTED, horizontal_boring=True)
+    r2 = run_job(SAMPLE, PRICING, tmp_path / "b", machine=with_h)
+    assert r2["files"]["edge_bores"] == 0 and r2["labor"]["edge_boring_hours"] == 0
+
+
+def test_nested_routes_and_unverified_flag():
+    cab = Cabinet("B1", "base", 18, 34.5, 24, doors=1)
+    parts = build_parts(cab, job_with(cab))
+    assert route(find(parts, "Bottom"), NESTED) == "CNC nest > edgeband > horizontal boring"
+    assert route(find(parts, "Back"), NESTED) == "CNC nest"
+    est = estimate_job(job_from_dict(SAMPLE), PRICING, machine=NESTED)
+    assert "router_hours" in est["labor"] and "saw_hours" not in est["labor"]
+    assert any("UNVERIFIED" in f for f in est["review_flags"])

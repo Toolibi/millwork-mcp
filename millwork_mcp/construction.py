@@ -94,6 +94,19 @@ def _door_machining(h: float, w: float, std: ConstructionStandard, hinge_side: s
              "x": round(x, 4), "y": round(y, 4)} for y in ys]
 
 
+def _mirror_x(ops: list[dict], width: float) -> list[dict]:
+    """Mirror face machining across the part width (left side -> right side)."""
+    out = []
+    for o in ops:
+        o = dict(o)
+        if o["op"] == "dado":
+            o["x"] = round(width - o["x"] - o["width"], 4)
+        elif "x" in o:
+            o["x"] = round(width - o["x"], 4)
+        out.append(o)
+    return out
+
+
 def _swap_xy(ops: list[dict]) -> list[dict]:
     """Re-express machining when a part's grain (length) runs across what was its width."""
     return [{**o, "x": o["y"], "y": o["x"]} if "y" in o else dict(o) for o in ops]
@@ -230,25 +243,27 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
         side_mach += [o for o in _system_holes(D, std, start=start, end=H - t - 3.0)
                       if all(abs(o["y"] - jy) > clear for jy in joint_ys)]
 
-    fin = len(set(cab.finished_ends.upper()) & {"L", "R"})
+    # Left and right sides are mirror images: both are machined inside face up, so the
+    # right side's bores are the left side's mirrored front-to-back (x -> D - x).
+    finished = set(cab.finished_ends.upper()) & {"L", "R"}
     a = std.prelam_allowance
-    if fin and not is_open and job.finished_end_method == "prelam" and job.finished_end_laminate:
-        # pre-lam: laminate pressed onto an oversize core blank, trimmed on the saw,
-        # THEN machined, so the CNC bores through a finished, flat face
-        parts.append(Part(cab.tag, "Side (finished, pre-lam)", case_mat, H, D, fin * q,
-                          dict(front_only), side_mach, exposed=True,
-                          laminate=job.finished_end_laminate,
-                          prelam_blank=(H + 2 * a, D + 2 * a)))
-        if fin < 2:
-            parts.append(Part(cab.tag, "Side", case_mat, H, D, (2 - fin) * q, dict(front_only), side_mach))
-    elif fin and job.exposed_material and not is_open:
-        parts.append(Part(cab.tag, "Side (finished)", job.exposed_material, H, D, fin * q,
-                          dict(front_only), side_mach, exposed=True))
-        if fin < 2:
-            parts.append(Part(cab.tag, "Side", case_mat, H, D, (2 - fin) * q, dict(front_only), side_mach))
-    else:
-        parts.append(Part(cab.tag, "Side", case_mat, H, D, 2 * q, dict(front_only), side_mach,
-                          exposed=is_open or bool(fin)))
+    prelam = (not is_open and job.finished_end_method == "prelam" and job.finished_end_laminate)
+    veneer_end = not is_open and job.exposed_material and not prelam
+    for hand in ("L", "R"):
+        mach = side_mach if hand == "L" else _mirror_x(side_mach, D)
+        if hand in finished and prelam:
+            # pre-lam: laminate is pressed before machining, so the CNC bores through a
+            # finished, flat face
+            parts.append(Part(cab.tag, f"Side {hand} (finished, pre-lam)", case_mat, H, D, q,
+                              dict(front_only), mach, exposed=True,
+                              laminate=job.finished_end_laminate,
+                              prelam_blank=(H + 2 * a, D + 2 * a)))
+        elif hand in finished and veneer_end:
+            parts.append(Part(cab.tag, f"Side {hand} (finished)", job.exposed_material, H, D, q,
+                              dict(front_only), mach, exposed=True))
+        else:
+            parts.append(Part(cab.tag, f"Side {hand}", case_mat, H, D, q, dict(front_only), mach,
+                              exposed=is_open or hand in finished))
 
     # --- horizontals: grain runs side to side (length = inside width) ---
     for h in horizontals:
@@ -353,7 +368,8 @@ def _fronts(cab: Cabinet, job: Job, std: ConstructionStandard,
                 length, width = h, w
             parts.append(Part(cab.tag, name, job.door_material, length, width, q, dict(all_edges),
                               mach, grain_group=group, seq=seq if match else None,
-                              grain_blank=blank, exposed=True))
+                              grain_blank=blank, exposed=True,
+                              grain_axis="width" if along_width else "height"))
     return parts
 
 
@@ -407,7 +423,8 @@ def review_job(job: Job, materials: dict[str, Material] | None = None) -> list[s
     if job.finished_end_method == "prelam" and not job.finished_end_laminate and \
             any(c.finished_ends for c in job.cabinets if c.type not in OPEN_TYPES):
         flags.append("Finished ends are specified as pre-lam but no laminate is set "
-                     "(finished_end_laminate) - finished sides will be plain case material")
+                     "(finished_end_laminate) - finished sides fall back to the exposed material, "
+                     "or plain case material if none is set")
     if materials:
         from .joinery import DOWEL_SPEC_THICKNESSES
         for c in job.cabinets:

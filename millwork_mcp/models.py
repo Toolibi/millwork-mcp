@@ -82,6 +82,7 @@ class Part:
     grain_group: Optional[str] = None   # parts cut in sequence from one grain-match blank
     seq: Optional[int] = None           # position within the grain-match group
     grain_blank: Optional[tuple] = None  # (length, width) of the blank the group comes from
+    grain_axis: Optional[str] = None     # fronts: "height" (vertical grain) or "width"
     exposed: bool = False               # face is seen in the finished cabinet
     laminate: Optional[str] = None      # pre-lam face (Material.code), pressed before machining
     prelam_blank: Optional[tuple] = None  # (length, width) of the oversize core blank

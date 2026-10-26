@@ -19,7 +19,9 @@ from .estimate import load_pricing, materials_from_pricing
 from .models import Cabinet
 from .joinery import METHODS
 from .nesting import prepare_for_saw, nest_parts, saw_cut_list
+from .machine import machine_from_pricing
 from .pipeline import job_from_dict, run_job
+from .router_nest import nest_job_router
 
 ROOT = Path(__file__).resolve().parent.parent
 PRICING_PATH = Path(os.environ.get("MILLWORK_PRICING", ROOT / "examples" / "pricing.json"))
@@ -63,21 +65,51 @@ def build_cutlist(job: dict) -> dict:
 
 
 @mcp.tool()
-def nest_panel_saw(job: dict, material: str) -> dict:
-    """Optimize the panel-saw cutting for one material (two-stage rip/crosscut).
-    Returns sheet count, yield and the operator rip/crosscut list."""
+def nest_sheets(job: dict, material: str) -> dict:
+    """Nest one material for the shop's machine.
+
+    Nested-based router (the shop's Stiles/HOMAG): MaxRects nesting with tool spacing,
+    grain lock, grain-matched fronts kept together in sequence, pre-lam parts on laminated
+    sheets (use material "CORE+LAMINATE", e.g. "MEL-WHT-34+HPL-WHT"). Returns sheets, yield,
+    small parts and the cut order (smallest part first).
+    Panel saw shop: two-stage rip/crosscut with the operator saw list."""
+    pricing = load_pricing(PRICING_PATH)
+    machine = machine_from_pricing(pricing)
     j = job_from_dict(job)
-    mats = materials_from_pricing(load_pricing(PRICING_PATH))
+    mats = materials_from_pricing(pricing)
     parts = [p for c in j.cabinets for p in build_parts(c, j, materials=mats)]
+    if machine.is_nested:
+        nests = nest_job_router(parts, mats, machine)
+        if material not in nests:
+            return {"error": f"No parts in {material}", "materials_in_job": sorted(nests)}
+        res = nests[material]
+        return {**res.summary(), "machine": machine.name,
+                "cut_order": [[f"{n}. {p.label}" for n, p in enumerate(sh.cut_order(), 1)]
+                              for sh in res.sheets]}
     res = nest_parts([p for p in prepare_for_saw(parts) if p.material == material], mats[material])
-    return {**res.summary(), "saw_list": saw_cut_list(res)}
+    return {**res.summary(), "machine": machine.name, "saw_list": saw_cut_list(res)}
+
+
+@mcp.tool()
+def get_machine_profile() -> dict:
+    """The shop's machine profile (nested router or panel saw), with each setting's source:
+    shop-confirmed, from a real program, or assumed. Anything assumed must be confirmed
+    before nest programs are trusted on the machine."""
+    m = machine_from_pricing(load_pricing(PRICING_PATH))
+    return {"name": m.name, "type": m.type, "tool_dia_in": m.tool_dia,
+            "part_spacing_in": m.part_spacing, "sheet_margin_in": m.sheet_margin,
+            "horizontal_boring": m.horizontal_boring, "contour_tool": m.contour_tool,
+            "dado_tool": m.dado_tool, "drill_mode": m.drill_mode, "sources": m.sources,
+            "unconfirmed": m.unconfirmed()}
 
 
 @mcp.tool()
 def estimate_and_export(job: dict) -> dict:
     """Full run: cut list, nesting, estimate (materials, edgebanding, hardware, labor,
-    overhead, markup) and shop files (cut list CSV, saw list CSV, per-part DXFs with
-    machining layers, nest diagrams).
+    overhead, markup) and shop files. On the nested router: one woodWOP-layer DXF per
+    sheet (mm, tool-centre cut-outs, bores, dados), nest diagrams, cut order and the
+    edge-boring list; on a panel-saw shop: saw list. Always: cut list with routes, CNC list,
+    per-part DXFs.
     Job format (inches): {job_number, name, case_material, door_material, exposed_material,
     joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
     grain_match: bool, finished_end_method: prelam|exposed_material, finished_end_laminate,

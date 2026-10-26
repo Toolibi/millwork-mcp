@@ -32,9 +32,20 @@ P_GROOVE_LEN = 55 / 25.4   # approximate P-System groove length; your tool defin
 CNC_OPS = ("drill", "pocket", "dado", "edge_drill", "pgroove")
 
 
-def route(part: Part) -> str:
-    """Machine routing: every part is cut on the panel saw; parts with bores, cups,
-    grooves or dados (shelf-pin rows included) then go to the CNC."""
+def route(part: Part, machine=None) -> str:
+    """Machine routing.
+
+    Panel saw shop: every part is cut on the saw; parts with bores, cups, grooves or dados
+    (shelf-pin rows included) then go to the CNC.
+    Nested shop: the router cuts and bores every part from the full sheet; parts then go
+    to the edgebander, and edge bores go to the horizontal borer if the router can't."""
+    if machine is not None and machine.is_nested:
+        steps = (["prelam sheet"] if part.laminate else []) + ["CNC nest"]
+        if part.edgeband and any(part.edgeband.values()):
+            steps.append("edgeband")
+        if not machine.horizontal_boring and any(o["op"] == "edge_drill" for o in part.machining):
+            steps.append("horizontal boring")
+        return " > ".join(steps)
     r = "saw > CNC" if any(o["op"] in CNC_OPS for o in part.machining) else "saw"
     return f"prelam > {r}" if part.laminate else r
 
@@ -133,7 +144,7 @@ def export_part_dxfs(parts: list[Part], materials: dict[str, Material], out_dir:
 
 
 def export_cutlist_csv(parts: list[Part], path: Path,
-                       materials: dict[str, Material] | None = None) -> Path:
+                       materials: dict[str, Material] | None = None, machine=None) -> Path:
     materials_grained = {k: m.grained for k, m in (materials or {}).items()}
     fields = ["cabinet", "part", "material", "qty", "length", "width", "grain",
               "grain_group", "seq", "exposed", "laminate",
@@ -150,7 +161,7 @@ def export_cutlist_csv(parts: list[Part], path: Path,
                         "exposed": int(p.exposed), "laminate": p.laminate or "",
                         "eb_L1": int(bool(e.get("L1"))), "eb_L2": int(bool(e.get("L2"))),
                         "eb_W1": int(bool(e.get("W1"))), "eb_W2": int(bool(e.get("W2"))),
-                        "edgeband_lf": f"{p.edgeband_lf:.2f}", "route": route(p),
+                        "edgeband_lf": f"{p.edgeband_lf:.2f}", "route": route(p, machine),
                         "machining_ops": len(p.machining)})
     return path
 

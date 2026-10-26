@@ -33,6 +33,21 @@ estimate_and_export ───── materials from the real nest + hardware + la
 Human review → CAM (S2M Center) → machine
 ```
 
+### Machines: nested router (default) or panel saw
+
+The shop profile in `examples/pricing.json` is a **Stiles / HOMAG nested-based CNC router running woodWOP**:
+
+- **Router nesting.** Parts are cut straight from full sheets with MaxRects nesting (no guillotine limit), spaced by the cutter, kept off the sheet edge, and grain-locked on grained material. A multi-start search keeps the layout with the fewest sheets. The sample kitchen nests on 8 sheets of 3/4" melamine at 84% yield, against 9 on the panel saw.
+- **Shop rules on the nest.** Grain-matched fronts are nested as one group in sequence, so the figure still runs door to door. Pre-lam parts nest on laminated full sheets pressed before nesting. Each sheet bores and grooves first, then cuts parts out smallest first while vacuum is strongest. Small parts are flagged for onion skin or tabs.
+- **woodWOP output.** One DXF per sheet in millimetres, on the layer names woodWOP's DXF import reads: `Werkstk_19` (workpiece), `V_BohrLS_12_7` (vertical bores at true diameter), and `V_Fraes_<Z>T<tool>` (cut-outs on the tool centre and dados). Parts are placed by rotation only, never mirrored, so every part keeps its machined face up.
+- **Edge boring.** Edge bores (dowel holes into part edges) go to `edge_boring_list.csv` for the horizontal borer when the router has no horizontal unit.
+- **Estimate.** Router time per sheet covers load, cut path at feed rate, and bores, plus horizontal boring and pre-lam press time.
+- **Provenance.** Every machine setting is tagged `shop`, `program`, or `assumed`. While anything is still assumed (tool numbers, Z convention, drilling mode, spacing), nest programs are reported as **UNVERIFIED** until one sheet has been simulated in woodWOP and run.
+
+Left and right sides are generated as mirror images (Side L / Side R), because both are machined inside-face-up.
+
+Set `"type": "panel_saw"` for a saw + point-to-point shop. That mode uses the two-stage rip/crosscut optimizer and the saw list instead.
+
 ### Construction methods
 
 **Shop construction spec (defaults).**
@@ -69,6 +84,13 @@ Connector counts flow into the hardware list, and each method has its own assemb
 - **Shop rules are configuration, not code.** Construction methods live in `ConstructionStandard`; prices live in a pricing table (JSON locally, Supabase in production). A new shop is onboarded by editing data.
 - **Review flags over silent assumptions.** Anything unusual is surfaced to the estimator instead of guessed.
 
+## Related work
+
+- [cabinet-mcp](https://github.com/chemrich/cabinet-mcp): frameless cabinet design with an MCP server, guillotine sheet layouts, and hardware part numbers. It has no CNC output and is aimed at small shops.
+- [CabinetCRAFT](https://github.com/LaMka21/CabinetCRAFT): SCM `.xcs` and woodWOP `.mpr` output. The source-tagged machine settings here follow its approach.
+- [gdrr-2bp](https://github.com/JeroenGar/gdrr-2bp): research-grade guillotine bin packing, a candidate panel-saw solver.
+- HOMAG woodWOP DXF import documentation: the source for the layer names used in the nest DXFs.
+
 ## Sample results (placeholder prices)
 
 | | `sample_kitchen.json` | `white_oak_kitchen.json` |
@@ -78,13 +100,13 @@ Connector counts flow into the hardware list, and each method has its own assemb
 | Main sheet goods | 9 sheets 3/4" melamine, 83% yield | 6 sheets 3/4" rift oak, 72% yield (grain-matched blanks) |
 | Grain-match groups | - | 7 |
 | Special cabinets | pantry | microwave, open bookcase, finished ends |
-| Sell price | ~$3,950 (incl. 4 pre-lam ends, nailers) | ~$4,920 |
+| Sell price (nested router) | ~$3,490 | ~$4,510 |
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                 # 42 tests: dowel spec, construction spec, joinery, grain match, CNC routing, nesting, estimate, DXF
+python -m pytest -q                 # 54 tests: nested router, woodWOP export, dowel spec, construction spec, joinery, grain match, CNC routing, nesting, estimate, DXF
 python -m millwork_mcp.cli examples/sample_kitchen.json
 python -m millwork_mcp.cli examples/white_oak_kitchen.json
 ```
@@ -111,7 +133,8 @@ Then: *"Here's the kitchen elevation PDF. Extract the cabinet schedule, review i
 |---|---|
 | `review_cabinet_schedule` | Sanity-checks an extracted schedule before anyone prices it |
 | `build_cutlist` | Explodes cabinets into parts using the construction standard |
-| `nest_panel_saw` | Guillotine rip/crosscut optimization for one material |
+| `nest_sheets` | Nests one material for the shop's machine: router nest with cut order, or panel-saw rip/crosscut list |
+| `get_machine_profile` | Machine settings with their source, and which are still unconfirmed |
 | `estimate_and_export` | Full estimate plus all shop files |
 | `list_joinery_methods` | Describes each joinery method so the AI can recommend one |
 | `get_pricing` | Returns the pricing table so the AI can explain the number |
@@ -137,7 +160,9 @@ Machining intent is encoded in layer names (placeholders, match them to your CAM
 - [x] Joinery (dowel, confirmat, cam & dowel, Clamex) on the 32mm system; grain matching; open and microwave cabinets
 - [ ] Grain matching across a run of cabinets (sequence-matched panels)
 - [ ] **Phase 2:** drawing ingestion (PDF elevations via vision; DWG via Autodesk's AutoCAD MCP server), pricing in Supabase
-- [ ] **Phase 3:** Cabinet Vision / S2M import round-trip, router nesting, web demo on Vercel
+- [x] Nested-router nesting and woodWOP per-sheet DXFs (unverified until run on the machine)
+- [ ] woodWOP `.mpr` programs templated from a real program off the shop's machine
+- [ ] **Phase 3:** Cabinet Vision / S2M import round-trip, web demo on Vercel
 - [ ] Accuracy study: AI-assisted vs manual estimates on real jobs (time saved, % variance)
 
 ## Scope note

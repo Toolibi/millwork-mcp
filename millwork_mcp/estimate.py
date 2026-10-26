@@ -16,7 +16,9 @@ from .export import CNC_OPS, route
 from .construction import build_job_parts, cabinet_connectors, review_job, ConstructionStandard
 from .joinery import METHODS
 from .models import Job, Material, Part
+from .machine import MachineProfile, machine_from_pricing
 from .nesting import prepare_for_saw, nest_parts, NestResult
+from .router_nest import nest_job_router
 
 
 def load_pricing(path: str | Path) -> dict:
@@ -34,28 +36,47 @@ def group_parts(parts: list[Part]) -> dict[str, list[Part]]:
     return g
 
 
-def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = None) -> dict:
+def _material_line(code: str, m: Material, sheets: int, yld: float, note: str = "") -> dict:
+    return {"material": code, "description": m.description + (f" ({note})" if note else ""),
+            "sheets": sheets, "yield_pct": round(yld, 1), "unit_cost": m.sheet_cost,
+            "cost": round(sheets * m.sheet_cost, 2)}
+
+
+def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = None,
+                 machine: MachineProfile | None = None) -> dict:
     std = std or ConstructionStandard()
+    machine = machine or machine_from_pricing(pricing)
     mats = materials_from_pricing(pricing)
     hw = pricing["hardware"]
     lab = pricing["labor"]
     parts = build_job_parts(job, std, mats)
-    # nest what the saw really cuts: grain-match blanks, pre-lam core + laminate blanks
-    by_mat = group_parts(prepare_for_saw(parts))
 
-    # --- sheet goods from the real panel-saw nest ---
-    nests: dict[str, NestResult] = {}
+    nests: dict = {}
     material_lines = []
-    for code, plist in by_mat.items():
-        if code not in mats:
-            raise KeyError(f"Material {code} is not in the pricing table")
-        res = nest_parts(plist, mats[code], kerf=pricing.get("kerf", 0.125),
-                         trim=pricing.get("trim", 0.25))
-        nests[code] = res
-        cost = res.sheet_count * mats[code].sheet_cost
-        material_lines.append({"material": code, "description": mats[code].description,
-                               "sheets": res.sheet_count, "yield_pct": round(res.yield_pct, 1),
-                               "unit_cost": mats[code].sheet_cost, "cost": round(cost, 2)})
+    prelam_sheets = 0
+    if machine.is_nested:
+        # --- sheet goods from the router nest: parts cut straight from full sheets ---
+        nests = nest_job_router(parts, mats, machine)
+        for key, res in nests.items():
+            core = key.split("+")[0]
+            if "+" in key:
+                lam = key.split("+")[1]
+                prelam_sheets += res.sheet_count
+                material_lines.append(_material_line(core, mats[core], res.sheet_count,
+                                                     res.yield_pct, "core for pre-lam sheets"))
+                material_lines.append(_material_line(lam, mats[lam], res.sheet_count,
+                                                     res.yield_pct, "pressed on full sheets before nesting"))
+            else:
+                material_lines.append(_material_line(core, mats[core], res.sheet_count, res.yield_pct))
+    else:
+        # --- panel saw: nest what the saw really cuts (grain-match and pre-lam blanks) ---
+        for code, plist in group_parts(prepare_for_saw(parts)).items():
+            if code not in mats:
+                raise KeyError(f"Material {code} is not in the pricing table")
+            res = nest_parts(plist, mats[code], kerf=pricing.get("kerf", 0.125),
+                             trim=pricing.get("trim", 0.25))
+            nests[code] = res
+            material_lines.append(_material_line(code, mats[code], res.sheet_count, res.yield_pct))
 
     eb_lf = sum(p.edgeband_lf for p in parts) * (1 + pricing.get("edgeband_waste", 0.10))
     eb_cost = eb_lf * pricing["edgeband_per_lf"]
@@ -92,20 +113,46 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
                    for c in job.cabinets)
     gm_groups = sum(1 for p in parts if p.grain_group and p.seq == 1 for _ in range(p.qty))
     prelam_panels = sum(p.qty for p in parts if p.laminate)
-    # saw time per sheet, then CNC time: load/unload per machined piece + per operation
-    saw_hr = total_sheets * lab.get("saw_hr_per_sheet", lab.get("machine_hr_per_sheet", 0))
-    cnc_parts = [p for p in parts if route(p) == "saw > CNC"]
-    cnc_pieces = sum(p.qty for p in cnc_parts)
-    cnc_ops = sum(p.qty * sum(1 for o in p.machining if o["op"] in CNC_OPS) for p in cnc_parts)
-    cnc_hr = (cnc_pieces * lab.get("cnc_min_per_part", 0) / 60
-              + cnc_ops * lab.get("cnc_sec_per_op", 0) / 3600)
+    machine_labor = {}
+    if machine.is_nested:
+        # router: load/unload per sheet + cut-out path at feed + bores; the separate
+        # horizontal borer picks up edge bores when the router has no horizontal unit
+        r = machine.tool_dia / 2
+        cut_in = sum(2 * (p.length + p.width) + 8 * r for res in nests.values()
+                     for sh in res.sheets for p in sh.placements)
+        dado_in = sum(p.qty * p.length for p in parts for o in p.machining if o["op"] == "dado")
+        bores = sum(p.qty for p in parts for o in p.machining if o["op"] in ("drill", "pocket"))
+        edge_bores = sum(p.qty for p in parts for o in p.machining if o["op"] == "edge_drill")
+        router_hr = (total_sheets * machine.load_min_per_sheet / 60
+                     + (cut_in + dado_in) / machine.feed_ipm / 60
+                     + bores * machine.sec_per_bore / 3600)
+        edge_hr = 0.0 if machine.horizontal_boring else edge_bores * machine.edge_bore_sec / 3600
+        if machine.horizontal_boring:
+            router_hr += edge_bores * machine.sec_per_bore / 3600
+        prelam_hr = prelam_sheets * machine.hr_per_prelam_sheet
+        machine_hr = router_hr + edge_hr + prelam_hr
+        machine_labor = {"router_hours": round(router_hr, 2), "router_sheets": total_sheets,
+                         "edge_boring_hours": round(edge_hr, 2), "edge_bores": edge_bores,
+                         "prelam_press_hours": round(prelam_hr, 2)}
+        gm_hr = 0.0   # fronts stay in sequence on the nest; no extra recut step
+    else:
+        # saw time per sheet, then CNC time: load/unload per machined piece + per operation
+        saw_hr = total_sheets * lab.get("saw_hr_per_sheet", lab.get("machine_hr_per_sheet", 0))
+        cnc_parts = [p for p in parts if route(p).endswith("CNC")]
+        cnc_pieces = sum(p.qty for p in cnc_parts)
+        cnc_ops = sum(p.qty * sum(1 for o in p.machining if o["op"] in CNC_OPS) for p in cnc_parts)
+        cnc_hr = (cnc_pieces * lab.get("cnc_min_per_part", 0) / 60
+                  + cnc_ops * lab.get("cnc_sec_per_op", 0) / 3600)
+        machine_hr = saw_hr + cnc_hr + prelam_panels * lab.get("hr_per_prelam_panel", 0)
+        machine_labor = {"saw_hours": round(saw_hr, 2), "cnc_hours": round(cnc_hr, 2),
+                         "cnc_pieces": cnc_pieces, "cnc_operations": cnc_ops}
+        gm_hr = gm_groups * lab["hr_per_grain_match_group"]
     labor_hours = (
         assembly
-        + gm_groups * lab["hr_per_grain_match_group"]
-        + prelam_panels * lab.get("hr_per_prelam_panel", 0)
+        + gm_hr
         + sum(d.qty for d in doors) * lab["hr_per_door"]
         + slides * lab["hr_per_drawer"]
-        + saw_hr + cnc_hr
+        + machine_hr
         + eb_lf * lab["edgeband_hr_per_lf"]
     )
     labor_cost = labor_hours * lab["rate_per_hr"]
@@ -122,13 +169,13 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
         "joinery": sorted({c.joinery or job.joinery for c in job.cabinets}),
         "grain_match_groups": gm_groups,
         "prelam_panels": prelam_panels,
-        "review_flags": review_job(job, mats),
+        "machine": machine.name,
+        "review_flags": review_job(job, mats) + _machine_flags(machine, nests),
         "materials": material_lines,
         "edgeband": {"lf": round(eb_lf, 1), "cost": round(eb_cost, 2)},
         "hardware": hardware_lines,
-        "labor": {"hours": round(labor_hours, 2), "rate": lab["rate_per_hr"], "cost": round(labor_cost, 2),
-                  "saw_hours": round(saw_hr, 2), "cnc_hours": round(cnc_hr, 2),
-                  "cnc_pieces": cnc_pieces, "cnc_operations": cnc_ops},
+        "labor": {"hours": round(labor_hours, 2), "rate": lab["rate_per_hr"],
+                  "cost": round(labor_cost, 2), **machine_labor},
         "totals": {
             "direct_cost": round(direct, 2),
             "overhead": round(overhead, 2),
@@ -138,6 +185,25 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
         "_nests": nests,
         "_parts": parts,
     }
+
+
+def _machine_flags(machine: MachineProfile, nests: dict) -> list[str]:
+    flags = []
+    if not machine.is_nested:
+        return flags
+    for key, res in nests.items():
+        for u in res.unplaced:
+            flags.append(f"{key}: {u} - will not fit the sheet with margins; split it or use a bigger sheet")
+        if res.small_parts:
+            flags.append(f"{key}: small parts ({', '.join(res.small_parts[:6])}"
+                         f"{'...' if len(res.small_parts) > 6 else ''}) - cut first with onion skin "
+                         "or tabs so they don't move")
+    open_items = machine.unconfirmed()
+    if open_items:
+        flags.append(f"Machine profile has {len(open_items)} unconfirmed settings "
+                     f"({', '.join(open_items[:5])}{'...' if len(open_items) > 5 else ''}) - "
+                     "nest programs are UNVERIFIED until checked in woodWOP and run on the machine")
+    return flags
 
 
 def public(estimate: dict) -> dict:
