@@ -409,13 +409,21 @@ def mm(pos):
     return [round(p / MM, 1) for p in pos]
 
 
-def test_dowel_layout_32_then_96_then_every_96():
-    # 24" deep bottom, joint zone ends at the back dado (23")
-    assert mm(dowel_positions(23.0)) == [32, 96, 192, 288, 384, 480]
-    # 12" wall cabinet bottom (joint zone 11")
-    assert mm(dowel_positions(11.0)) == [32, 96, 192]
-    gaps = [b - a for a, b in zip(mm(dowel_positions(23.0)), mm(dowel_positions(23.0))[1:])]
+def test_dowel_layout_32_then_96_then_every_96_with_closing_dowel():
+    # 24" deep bottom, joint zone ends at the back dado (23" = 584.2mm)
+    assert mm(dowel_positions(23.0)) == [32, 96, 192, 288, 384, 480, 552.2]
+    # 12" wall cabinet bottom (joint zone 11" = 279.4mm)
+    assert mm(dowel_positions(11.0)) == [32, 96, 192, 247.4]
+    pitch = mm(dowel_positions(23.0))[:-1]
+    gaps = [b - a for a, b in zip(pitch, pitch[1:])]
     assert gaps[0] == 64 and all(g == 96 for g in gaps[1:])
+
+
+def test_closing_dowel_is_32mm_from_the_back_and_never_crowds_the_last_pitch_dowel():
+    for inches in [x / 8 for x in range(32, 200)]:      # 4" to 24.9" joints
+        pos = mm(dowel_positions(inches))
+        assert pos[-1] == pytest.approx(inches * 25.4 - 32, abs=0.1)
+        assert all(b - a >= 32 - 0.1 for a, b in zip(pos, pos[1:])), (inches, pos)
 
 
 def test_narrow_rails_and_nailers_still_get_two_dowels():
@@ -455,7 +463,7 @@ def test_three_quarter_casework_uses_8mm_dowels():
                    if o["op"] == "drill" and o.get("role") != "shelf_pin"]
     assert {o["dia_mm"] for o in joint_bores} == {8}
     bottom_row = sorted(o["x"] for o in joint_bores if o["y"] < 1)
-    assert mm(bottom_row) == [32, 96, 192, 288, 384, 480]
+    assert mm(bottom_row) == [32, 96, 192, 288, 384, 480, 552.2]   # closing 32mm before dado
 
 
 def test_off_spec_thickness_is_flagged():

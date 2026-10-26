@@ -6,7 +6,7 @@ Each method produces two sets of machining for every case joint:
 
 Dowels follow the shop spec: 8mm in 3/4" material, 5mm in 1/2" and 3/8" material. The
 first dowel is 32mm from the front, the next 64mm further (96mm), then every 96mm to
-the back - every position lands on the 32mm grid. Other connectors start at the 37mm
+the back, with a closing dowel 32mm in front of the back of the joint. Other connectors start at the 37mm
 system line and step on the 32mm grid. Sizes are common industry values; confirm them
 against your supplier's spec sheet and your CAM tooling before cutting.
 """
@@ -33,7 +33,7 @@ METHODS: dict[str, JoineryMethod] = {
     "dowel": JoineryMethod(
         "dowel", "Dowel, 32mm system (8mm in 3/4\", 5mm in 1/2\" & 3/8\")", 96, 2, True, False, False,
         "Face bore in the side, edge bore in the horizontal at 32mm, 96mm, then every 96mm "
-        "from the front; glued and clamped"),
+        "from the front, closing dowel 32mm from the back; glued and clamped"),
     "confirmat": JoineryMethod(
         "confirmat", "7 x 50mm confirmat screw", 160, 2, False, True, False,
         "7mm through-hole in the side, 5mm pilot into the edge of the horizontal"),
@@ -66,25 +66,28 @@ def dowel_size(thickness: float) -> DowelSize:
 
 DOWEL_SPEC_THICKNESSES = (0.75, 0.5, 0.375)
 DOWEL_FIRST_MM, DOWEL_SECOND_MM, DOWEL_PITCH_MM = 32, 96, 96
-DOWEL_REAR_CLEAR_MM = 25   # keep the last dowel this far in front of the joint end
+DOWEL_CLOSING_MM = 32     # closing dowel this far in front of the joint end (the back)
+DOWEL_MIN_GAP_MM = 32     # no two dowels closer than this
 
 
 def dowel_positions(length: float, offset: float = 0.0) -> list[float]:
-    """32mm from the front, then 96mm (a 64mm interval), then every 96mm.
+    """32mm from the front, then 96mm (a 64mm interval), then every 96mm, plus a closing
+    dowel 32mm in front of the back of the joint.
 
-    On parts too narrow for two dowels under that rule (4" rails and nailers), dowels go
-    32mm in from each end so the joint still gets two.
+    For bottoms and tops the joint ends at the back dado, so the closing dowel sits 32mm
+    in front of it. Pitch dowels that would land within 32mm of the closing dowel are
+    dropped. Narrow parts (4" rails and nailers) end up with 32mm from each end.
     """
-    limit = length / MM - DOWEL_REAR_CLEAR_MM
+    total = length / MM
+    closing = total - DOWEL_CLOSING_MM
+    if closing <= DOWEL_FIRST_MM:   # too narrow for two: one centred dowel
+        return [round(offset + length / 2, 4)]
     pts = []
     p = DOWEL_FIRST_MM
-    while p <= limit + 1e-9:
+    while p <= closing - DOWEL_MIN_GAP_MM + 1e-9:
         pts.append(p)
         p = DOWEL_SECOND_MM if p == DOWEL_FIRST_MM else p + DOWEL_PITCH_MM
-    if len(pts) < 2 and length / MM >= 2 * DOWEL_FIRST_MM + 8:
-        pts = [DOWEL_FIRST_MM, length / MM - DOWEL_FIRST_MM]
-    if not pts:
-        return [round(offset + length / 2, 4)]
+    pts.append(closing)
     return [round(offset + q * MM, 4) for q in pts]
 
 
