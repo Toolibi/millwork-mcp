@@ -17,7 +17,8 @@ from mcp.server.fastmcp import FastMCP
 from .construction import build_parts, review_job
 from .estimate import load_pricing, materials_from_pricing
 from .models import Cabinet
-from .nesting import nest_parts, saw_cut_list
+from .joinery import METHODS
+from .nesting import consolidate_grain_groups, nest_parts, saw_cut_list
 from .pipeline import job_from_dict, run_job
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -30,22 +31,30 @@ mcp = FastMCP("millwork")
 def review_cabinet_schedule(job: dict) -> dict:
     """Check a cabinet schedule extracted from drawings for likely errors before estimating.
     Returns review flags (duplicate tags, odd sizes, oversized doors, sink-base drawers...).
-    Job format: {job_number, name, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base,
-    width, height, depth, qty, doors, drawers, adj_shelves, notes}]}, all in inches.
+    Job format (inches): {job_number, name, case_material, door_material, exposed_material,
+    joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
+    grain_match: bool, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
+    microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
+    opening_height, finished_ends: ""|L|R|LR, joinery, notes}]}
     """
     j = job_from_dict(job)
-    return {"cabinets": len(j.cabinets), "flags": review_job(j)}
+    mats = materials_from_pricing(load_pricing(PRICING_PATH))
+    return {"cabinets": len(j.cabinets), "flags": review_job(j, mats)}
 
 
 @mcp.tool()
 def build_cutlist(job: dict) -> dict:
     """Explode a cabinet schedule into a part-by-part cut list using the shop's
     construction standard (frameless, 32mm system).
-    Job format: {job_number, name, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base,
-    width, height, depth, qty, doors, drawers, adj_shelves, notes}]}, all in inches.
+    Job format (inches): {job_number, name, case_material, door_material, exposed_material,
+    joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
+    grain_match: bool, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
+    microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
+    opening_height, finished_ends: ""|L|R|LR, joinery, notes}]}
     """
     j = job_from_dict(job)
-    parts = [p.to_dict() for c in j.cabinets for p in build_parts(c, j)]
+    mats = materials_from_pricing(load_pricing(PRICING_PATH))
+    parts = [p.to_dict() for c in j.cabinets for p in build_parts(c, j, materials=mats)]
     for p in parts:
         p.pop("machining")
     return {"part_lines": len(parts), "parts": parts}
@@ -57,8 +66,8 @@ def nest_panel_saw(job: dict, material: str) -> dict:
     Returns sheet count, yield and the operator rip/crosscut list."""
     j = job_from_dict(job)
     mats = materials_from_pricing(load_pricing(PRICING_PATH))
-    parts = [p for c in j.cabinets for p in build_parts(c, j) if p.material == material]
-    res = nest_parts(parts, mats[material])
+    parts = [p for c in j.cabinets for p in build_parts(c, j, materials=mats) if p.material == material]
+    res = nest_parts(consolidate_grain_groups(parts), mats[material])
     return {**res.summary(), "saw_list": saw_cut_list(res)}
 
 
@@ -67,11 +76,22 @@ def estimate_and_export(job: dict) -> dict:
     """Full run: cut list, nesting, estimate (materials, edgebanding, hardware, labor,
     overhead, markup) and shop files (cut list CSV, saw list CSV, per-part DXFs with
     machining layers, nest diagrams).
-    Job format: {job_number, name, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base,
-    width, height, depth, qty, doors, drawers, adj_shelves, notes}]}, all in inches.
+    Job format (inches): {job_number, name, case_material, door_material, exposed_material,
+    joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
+    grain_match: bool, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
+    microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
+    opening_height, finished_ends: ""|L|R|LR, joinery, notes}]}
     """
     out = OUTPUT_ROOT / job["job_number"]
     return run_job(job, load_pricing(PRICING_PATH), out)
+
+
+@mcp.tool()
+def list_joinery_methods() -> dict:
+    """Case joinery methods the engine can machine, with how each one is laid out."""
+    return {k: {"name": m.name, "pitch_mm": m.pitch_mm, "glued": m.glue,
+                "visible_on_face": m.shows_on_face, "knock_down": m.knock_down,
+                "how": m.description} for k, m in METHODS.items()}
 
 
 @mcp.tool()

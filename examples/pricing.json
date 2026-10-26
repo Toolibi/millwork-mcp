@@ -12,7 +12,11 @@
     {"code": "MEL-WHT-14", "description": "1/4\" white melamine back", "thickness": 0.25,
      "sheet_length": 97, "sheet_width": 49, "sheet_cost": 32.00, "grained": false},
     {"code": "BB-58", "description": "5/8\" Baltic birch (drawer boxes)", "thickness": 0.625,
-     "sheet_length": 60, "sheet_width": 60, "sheet_cost": 72.00, "grained": true}
+     "sheet_length": 60, "sheet_width": 60, "sheet_cost": 72.00, "grained": true},
+    {"code": "WO-RIFT-34", "description": "3/4\" rift white oak veneer ply", "thickness": 0.75,
+     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 165.00, "grained": true},
+    {"code": "WO-RIFT-14", "description": "1/4\" rift white oak veneer ply (exposed backs)", "thickness": 0.25,
+     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 78.00, "grained": true}
   ],
   "hardware": {
     "hinge": 4.25,
@@ -21,12 +25,27 @@
     "shelf_pin": 0.12,
     "leveler": 1.40
   },
+  "joinery_hardware": {
+    "dowel": {"description": "8 x 35mm fluted dowel", "unit_cost": 0.03},
+    "confirmat": {"description": "7 x 50mm confirmat screw", "unit_cost": 0.07},
+    "confirmat_cap": {"description": "Confirmat cover cap", "unit_cost": 0.02},
+    "cam_bolt_set": {"description": "15mm cam + connecting bolt set", "unit_cost": 0.45},
+    "clamex_p14": {"description": "Lamello Clamex P-14 connector pair", "unit_cost": 1.60}
+  },
+  "joinery_assembly_factor": {
+    "_note": "Multiplier on assembly_hr_per_box. Glued dowels need clamp time; screws and knock-down fittings assemble faster.",
+    "dowel": 1.00,
+    "confirmat": 0.75,
+    "cam_dowel": 0.85,
+    "lamello_clamex": 0.80
+  },
   "labor": {
     "rate_per_hr": 55.00,
     "assembly_hr_per_box": 0.75,
     "hr_per_door": 0.15,
     "hr_per_drawer": 0.40,
     "machine_hr_per_sheet": 0.20,
-    "edgeband_hr_per_lf": 0.004
+    "edgeband_hr_per_lf": 0.004,
+    "hr_per_grain_match_group": 0.35
   }
 }

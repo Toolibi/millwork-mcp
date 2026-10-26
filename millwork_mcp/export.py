@@ -21,7 +21,12 @@ LAYERS = {
     "drill": "DRILL_{dia:g}MM_D{depth:.3f}",
     "pocket": "POCKET_{dia:g}MM_D{depth:.3f}",
     "dado": "DADO_W{width:.3f}_D{depth:.3f}",
+    "drill_thru": "DRILL_{dia:g}MM_THRU",
+    "edge_drill": "HDRILL_{dia:g}MM_D{depth:.3f}_{edge}",   # horizontal bore into an end edge
+    "pgroove_face": "LAMELLO_{system}_FACE",
+    "pgroove_edge": "LAMELLO_{system}_EDGE_{edge}",
 }
+P_GROOVE_LEN = 55 / 25.4   # approximate P-System groove length; your tool defines the real one
 
 
 def _safe(name: str) -> str:
@@ -39,9 +44,38 @@ def part_to_dxf(part: Part, material: Material, path: Path) -> Path:
     msp.add_lwpolyline([(0, 0), (W, 0), (W, L), (0, L)], close=True,
                        dxfattribs={"layer": outline_layer})
 
+    def layer_for(name: str, color: int) -> str:
+        if name not in doc.layers:
+            doc.layers.add(name, color=color)
+        return name
+
     for op in part.machining:
         kind = op["op"]
-        if kind in ("drill", "pocket"):
+        if kind == "drill" and op.get("through"):
+            layer = layer_for(LAYERS["drill_thru"].format(dia=op["dia_mm"]), 6)
+            msp.add_circle((op["x"], op["y"]), radius=op["dia_mm"] / 25.4 / 2,
+                           dxfattribs={"layer": layer})
+        elif kind == "edge_drill":
+            # drawn as a line from the end edge inward, showing bore position and depth
+            layer = layer_for(LAYERS["edge_drill"].format(dia=op["dia_mm"], depth=op["depth"],
+                                                          edge=op["edge"]), 4)
+            y0 = 0.0 if op["edge"] == "W1" else L
+            y1 = op["depth"] if op["edge"] == "W1" else L - op["depth"]
+            msp.add_line((op["x"], y0), (op["x"], y1), dxfattribs={"layer": layer})
+        elif kind == "pgroove":
+            half = P_GROOVE_LEN / 2
+            if op["orient"] == "face":
+                layer = layer_for(LAYERS["pgroove_face"].format(system=op["system"]), 2)
+                y = op["y"]
+                msp.add_lwpolyline([(op["x"] - half, y - 0.1), (op["x"] + half, y - 0.1),
+                                    (op["x"] + half, y + 0.1), (op["x"] - half, y + 0.1)],
+                                   close=True, dxfattribs={"layer": layer})
+            else:
+                layer = layer_for(LAYERS["pgroove_edge"].format(system=op["system"],
+                                                                edge=op["edge"]), 2)
+                y = 0.0 if op["edge"] == "W1" else L
+                msp.add_line((op["x"] - half, y), (op["x"] + half, y), dxfattribs={"layer": layer})
+        elif kind in ("drill", "pocket"):
             layer = LAYERS[kind].format(dia=op["dia_mm"], depth=op["depth"])
             if layer not in doc.layers:
                 doc.layers.add(layer, color=1 if kind == "drill" else 3)
@@ -71,8 +105,11 @@ def export_part_dxfs(parts: list[Part], materials: dict[str, Material], out_dir:
     return files
 
 
-def export_cutlist_csv(parts: list[Part], path: Path) -> Path:
-    fields = ["cabinet", "part", "material", "qty", "length", "width",
+def export_cutlist_csv(parts: list[Part], path: Path,
+                       materials: dict[str, Material] | None = None) -> Path:
+    materials_grained = {k: m.grained for k, m in (materials or {}).items()}
+    fields = ["cabinet", "part", "material", "qty", "length", "width", "grain",
+              "grain_group", "seq", "exposed",
               "eb_L1", "eb_L2", "eb_W1", "eb_W2", "edgeband_lf", "machining_ops"]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
@@ -81,6 +118,9 @@ def export_cutlist_csv(parts: list[Part], path: Path) -> Path:
             e = p.edgeband
             w.writerow({"cabinet": p.cabinet_tag, "part": p.name, "material": p.material,
                         "qty": p.qty, "length": f"{p.length:.4f}", "width": f"{p.width:.4f}",
+                        "grain": "along length" if materials_grained.get(p.material) else "",
+                        "grain_group": p.grain_group or "", "seq": p.seq or "",
+                        "exposed": int(p.exposed),
                         "eb_L1": int(bool(e.get("L1"))), "eb_L2": int(bool(e.get("L2"))),
                         "eb_W1": int(bool(e.get("W1"))), "eb_W2": int(bool(e.get("W2"))),
                         "edgeband_lf": f"{p.edgeband_lf:.2f}", "machining_ops": len(p.machining)})

@@ -10,9 +10,12 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from .construction import build_job_parts, hinge_count, review_job, ConstructionStandard
+from collections import Counter
+
+from .construction import build_job_parts, cabinet_connectors, review_job, ConstructionStandard
+from .joinery import METHODS
 from .models import Job, Material, Part
-from .nesting import nest_parts, NestResult
+from .nesting import consolidate_grain_groups, nest_parts, NestResult
 
 
 def load_pricing(path: str | Path) -> dict:
@@ -35,8 +38,9 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     mats = materials_from_pricing(pricing)
     hw = pricing["hardware"]
     lab = pricing["labor"]
-    parts = build_job_parts(job, std)
-    by_mat = group_parts(parts)
+    parts = build_job_parts(job, std, mats)
+    # grain-matched fronts are nested as the blank they are cut from
+    by_mat = group_parts(consolidate_grain_groups(parts))
 
     # --- sheet goods from the real panel-saw nest ---
     nests: dict[str, NestResult] = {}
@@ -58,18 +62,23 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     # --- hardware counts derived from the construction ---
     doors = [p for p in parts if p.name.startswith("Door")]
     fronts = [p for p in parts if p.name.startswith("Drawer Front")]
-    hinges = sum(hinge_count(d.length) * d.qty for d in doors)
+    hinges = sum(sum(1 for o in d.machining if o["op"] == "pocket") * d.qty for d in doors)
     slides = sum(f.qty for f in fronts)
     pulls = sum(d.qty for d in doors) + slides
     shelf_pins = sum(p.qty * 4 for p in parts if p.name == "Adj Shelf")
     levelers = sum(4 * c.qty for c in job.cabinets if c.type in ("base", "drawer_base", "sink_base", "tall"))
+    connectors: Counter = Counter()
+    for c in job.cabinets:
+        connectors.update(cabinet_connectors(c, job, std))
+    jhw = pricing["joinery_hardware"]
     hardware_lines = [
         {"item": "Hinge (clip-top, soft close)", "qty": hinges, "unit": hw["hinge"]},
         {"item": "Undermount slide (pair)", "qty": slides, "unit": hw["slide_pair"]},
         {"item": "Pull / knob", "qty": pulls, "unit": hw["pull"]},
         {"item": "Shelf pin", "qty": shelf_pins, "unit": hw["shelf_pin"]},
         {"item": "Leveler leg", "qty": levelers, "unit": hw["leveler"]},
-    ]
+    ] + [{"item": jhw[k]["description"], "qty": n, "unit": jhw[k]["unit_cost"]}
+         for k, n in sorted(connectors.items())]
     for h in hardware_lines:
         h["cost"] = round(h["qty"] * h["unit"], 2)
     hw_cost = sum(h["cost"] for h in hardware_lines)
@@ -77,8 +86,13 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     # --- labor ---
     boxes = sum(c.qty for c in job.cabinets)
     total_sheets = sum(n.sheet_count for n in nests.values())
+    jf = pricing["joinery_assembly_factor"]
+    assembly = sum(c.qty * lab["assembly_hr_per_box"] * jf[c.joinery or job.joinery]
+                   for c in job.cabinets)
+    gm_groups = sum(1 for p in parts if p.grain_group and p.seq == 1 for _ in range(p.qty))
     labor_hours = (
-        boxes * lab["assembly_hr_per_box"]
+        assembly
+        + gm_groups * lab["hr_per_grain_match_group"]
         + sum(d.qty for d in doors) * lab["hr_per_door"]
         + slides * lab["hr_per_drawer"]
         + total_sheets * lab["machine_hr_per_sheet"]
@@ -95,7 +109,9 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
         "job_name": job.name,
         "cabinet_count": boxes,
         "part_count": sum(p.qty for p in parts),
-        "review_flags": review_job(job),
+        "joinery": sorted({c.joinery or job.joinery for c in job.cabinets}),
+        "grain_match_groups": gm_groups,
+        "review_flags": review_job(job, mats),
         "materials": material_lines,
         "edgeband": {"lf": round(eb_lf, 1), "cost": round(eb_cost, 2)},
         "hardware": hardware_lines,

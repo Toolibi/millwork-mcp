@@ -33,6 +33,23 @@ estimate_and_export ───── materials from the real nest + hardware + la
 Human review → CAM (S2M Center) → machine
 ```
 
+### Construction methods
+
+**Case joinery, laid out on the 32mm system.** Every joint starts on the 37mm system line and steps on the 32mm grid, so the same drill block that bores shelf-pin rows bores the joints. Joinery can be set per job and overridden per cabinet.
+
+| Method | Side (gable) | Horizontal (bottom, top, stretcher, fixed shelf) | Notes |
+|---|---|---|---|
+| `dowel` | 8mm face bores | 8mm edge bores | Glued; full assembly time |
+| `confirmat` | 7mm through-holes | 5mm edge pilots | Fastest assembly; flagged on finished or open cabinets because the heads show |
+| `cam_dowel` | 5mm bolt bores at front/rear, 8mm dowels between | 15mm cam face bores + 8mm edge bores | Knock-down, ships flat |
+| `lamello_clamex` | P-System face grooves | P-System edge grooves + 6mm access holes | Invisible knock-down |
+
+Connector counts flow into the hardware list, and each method has its own assembly-time factor in the pricing table. Joint bores stop in front of the back dado, and shelf-pin rows skip anywhere a fixed part lands.
+
+**Grain matching.** When fronts are in a grained material, every door and drawer front on a cabinet is laid out on one oversize blank, numbered in sequence (top to bottom, left to right), so the figure runs continuously across the doors and down a drawer bank. The *blank* is what gets nested and cut on the saw; fronts are recut from it in order. `front_grain` sets vertical or horizontal grain, and hinge-cup machining turns with the part.
+
+**Open and finished cabinets.** `bookcase` and `microwave` cabinets have visible interiors, so sides, top, bottom, shelves and back switch to the exposed material (e.g. veneer ply) with sides grained vertically and horizontals grained side to side. Microwave cabinets get a fixed shelf at the appliance opening, doors above only, and adjustable shelves only above the shelf. Tall bookcases get a structural fixed shelf automatically. `finished_ends` puts exposed material on the sides that show from outside.
+
 ### Design principles (the FDE part)
 
 - **The model never does the arithmetic.** It extracts structure from drawings; Python computes parts, nests and prices. Estimates are reproducible and auditable.
@@ -40,23 +57,24 @@ Human review → CAM (S2M Center) → machine
 - **Shop rules are configuration, not code.** Construction methods live in `ConstructionStandard`; prices live in a pricing table (JSON locally, Supabase in production). A new shop is onboarded by editing data.
 - **Review flags over silent assumptions.** Anything unusual is surfaced to the estimator instead of guessed.
 
-## Sample result (`examples/sample_kitchen.json`, placeholder prices)
+## Sample results (placeholder prices)
 
-| | |
-|---|---|
-| Cabinets | 10 (bases, drawer base, sink base, walls, pantry) |
-| Parts generated | 118 |
-| 3/4" melamine | 9 sheets, 83% yield |
-| Edgebanding | ~330 LF |
-| Hardware | 34 hinges, 6 slide pairs, 20 pulls, levelers, shelf pins |
-| Sell price | ~$3,450 at sample rates |
+| | `sample_kitchen.json` | `white_oak_kitchen.json` |
+|---|---|---|
+| Cabinets | 10, melamine, dowel | 8, rift white oak fronts, all four joinery methods |
+| Parts generated | 118 | 106 |
+| Main sheet goods | 9 sheets 3/4" melamine, 83% yield | 6 sheets 3/4" rift oak, 72% yield (grain-matched blanks) |
+| Grain-match groups | - | 7 |
+| Special cabinets | pantry | microwave, open bookcase, finished ends |
+| Sell price | ~$3,460 | ~$4,710 |
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                 # 10 tests: construction, nesting, estimate, DXF validity
+python -m pytest -q                 # 28 tests: construction, joinery, grain match, nesting, estimate, DXF
 python -m millwork_mcp.cli examples/sample_kitchen.json
+python -m millwork_mcp.cli examples/white_oak_kitchen.json
 ```
 
 ### Use it from Claude (or any MCP client)
@@ -83,6 +101,7 @@ Then: *"Here's the kitchen elevation PDF. Extract the cabinet schedule, review i
 | `build_cutlist` | Explodes cabinets into parts using the construction standard |
 | `nest_panel_saw` | Guillotine rip/crosscut optimization for one material |
 | `estimate_and_export` | Full estimate plus all shop files |
+| `list_joinery_methods` | Describes each joinery method so the AI can recommend one |
 | `get_pricing` | Returns the pricing table so the AI can explain the number |
 
 ## DXF layer convention
@@ -95,10 +114,16 @@ Machining intent is encoded in layer names (placeholders, match them to your CAM
 | `DRILL_5MM_D0.500` | 5mm system / shelf-pin holes, 1/2" deep |
 | `POCKET_35MM_D0.500` | 35mm hinge cup |
 | `DADO_W0.250_D0.375` | Back panel dado |
+| `DRILL_7MM_THRU` | Confirmat through-hole |
+| `DRILL_15MM_D0.531` | Cam housing |
+| `HDRILL_8MM_D1.000_W1` | Horizontal (edge) bore into end W1 or W2 |
+| `LAMELLO_P14_FACE` / `LAMELLO_P14_EDGE_W1` | Clamex P-System grooves |
 
 ## Roadmap
 
 - [x] **Phase 1:** schedule → parts → nest → estimate → DXF / CSV, as MCP tools
+- [x] Joinery (dowel, confirmat, cam & dowel, Clamex) on the 32mm system; grain matching; open and microwave cabinets
+- [ ] Grain matching across a run of cabinets (sequence-matched panels)
 - [ ] **Phase 2:** drawing ingestion (PDF elevations via vision; DWG via Autodesk's AutoCAD MCP server), pricing in Supabase
 - [ ] **Phase 3:** Cabinet Vision / S2M import round-trip, router nesting, web demo on Vercel
 - [ ] Accuracy study: AI-assisted vs manual estimates on real jobs (time saved, % variance)

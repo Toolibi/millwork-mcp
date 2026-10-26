@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
-from typing import Literal
+from typing import Literal, Optional
 
-CabinetType = Literal["base", "wall", "tall", "drawer_base", "sink_base"]
+CabinetType = Literal["base", "wall", "tall", "drawer_base", "sink_base", "bookcase", "microwave"]
+BASE_TYPES = ("base", "drawer_base", "sink_base")
+OPEN_TYPES = ("bookcase", "microwave")   # interior is visible -> exposed material, grain rules
 
 
 @dataclass
@@ -29,9 +31,13 @@ class Cabinet:
     doors: int = 0
     drawers: int = 0
     adj_shelves: int = 0
+    fixed_shelves: int = 0
+    opening_height: float = 0.0     # microwave: clear opening below the fixed shelf
+    finished_ends: str = ""         # "", "L", "R" or "LR": sides seen from outside
+    joinery: Optional[str] = None   # overrides the job default
     notes: str = ""
 
-    def validate(self) -> list[str]:
+    def validate(self, job: "Job | None" = None) -> list[str]:
         """Return a list of review flags (not exceptions) for the estimator."""
         flags = []
         if self.width < 9:
@@ -42,10 +48,23 @@ class Cabinet:
             flags.append(f"{self.tag}: door width over 24\" - check sag/weight")
         if self.type == "wall" and self.depth > 15:
             flags.append(f"{self.tag}: wall cabinet depth {self.depth}\" exceeds typical 12-15\"")
-        if self.type in ("base", "drawer_base", "sink_base") and not 30 <= self.height <= 36:
+        if self.type in BASE_TYPES and not 30 <= self.height <= 36:
             flags.append(f"{self.tag}: base height {self.height}\" outside typical 30-36\" box height")
         if self.type == "sink_base" and self.drawers:
             flags.append(f"{self.tag}: sink base with drawers - confirm plumbing clearance / false fronts")
+        if self.type == "microwave":
+            if self.opening_height <= 0:
+                flags.append(f"{self.tag}: microwave cabinet has no opening height - get the appliance spec")
+            elif self.opening_height < 14 or self.depth < 15:
+                flags.append(f"{self.tag}: microwave opening {self.opening_height}\" high x "
+                             f"{self.depth}\" deep - check against the appliance cut-out spec and vent")
+        if self.type == "bookcase" and self.width > 36 and self.adj_shelves:
+            flags.append(f"{self.tag}: {self.width}\" span on 3/4\" shelves will sag under books - "
+                         "add a divider, thicker shelf or stiffener")
+        joinery = self.joinery or (job.joinery if job else None)
+        if joinery == "confirmat" and (self.finished_ends or self.type in OPEN_TYPES):
+            flags.append(f"{self.tag}: confirmat heads will show on finished/exposed sides - "
+                         "use caps, applied panels, or switch this cabinet to dowel or Clamex")
         return flags
 
 
@@ -54,11 +73,15 @@ class Part:
     cabinet_tag: str
     name: str
     material: str               # Material.code
-    length: float               # finished length (grain direction)
+    length: float               # finished length, ALWAYS the grain direction
     width: float
     qty: int = 1
     edgeband: dict = field(default_factory=dict)   # {"L1":True,"L2":False,"W1":..,"W2":..}
-    machining: list[dict] = field(default_factory=list)  # bores/dados for DXF export
+    machining: list[dict] = field(default_factory=list)
+    grain_group: Optional[str] = None   # parts cut in sequence from one grain-match blank
+    seq: Optional[int] = None           # position within the grain-match group
+    grain_blank: Optional[tuple] = None  # (length, width) of the blank the group comes from
+    exposed: bool = False               # face is seen in the finished cabinet
 
     @property
     def area_sqft(self) -> float:
@@ -85,3 +108,8 @@ class Job:
     case_material: str = "MEL-WHT-34"
     back_material: str = "MEL-WHT-14"
     door_material: str = "MEL-WHT-34"
+    exposed_material: Optional[str] = None       # open interiors / finished ends (e.g. veneer ply)
+    exposed_back_material: Optional[str] = None
+    joinery: str = "dowel"                       # dowel | confirmat | cam_dowel | lamello_clamex
+    front_grain: str = "vertical"                # vertical | horizontal (grained fronts only)
+    grain_match: bool = True                     # cut each cabinet's fronts from one blank

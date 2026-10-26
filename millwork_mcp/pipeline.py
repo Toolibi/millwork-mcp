@@ -12,22 +12,20 @@ from .nesting import nest_svg
 
 def job_from_dict(d: dict) -> Job:
     cabs = [Cabinet(**c) for c in d["cabinets"]]
-    return Job(job_number=d["job_number"], name=d["name"], cabinets=cabs,
-               case_material=d.get("case_material", "MEL-WHT-34"),
-               back_material=d.get("back_material", "MEL-WHT-14"),
-               door_material=d.get("door_material", "MEL-WHT-34"))
+    fields = {k: v for k, v in d.items() if k != "cabinets"}
+    return Job(cabinets=cabs, **fields)
 
 
 def run_job(job_data: dict, pricing: dict, out_dir: str | Path) -> dict:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     job = job_from_dict(job_data)
-    est = estimate_job(job, pricing)
     mats = materials_from_pricing(pricing)
+    est = estimate_job(job, pricing)
 
     files = {
         "estimate_json": out / "estimate.json",
-        "cutlist_csv": export_cutlist_csv(est["_parts"], out / "cutlist.csv"),
+        "cutlist_csv": export_cutlist_csv(est["_parts"], out / "cutlist.csv", mats),
         "saw_list_csv": export_saw_list_csv(est["_nests"], out / "saw_list.csv"),
     }
     files["estimate_json"].write_text(json.dumps(public(est), indent=2))

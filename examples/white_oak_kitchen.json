@@ -1,0 +1,22 @@
+{
+  "job_number": "DEMO-1002",
+  "name": "Rift white oak kitchen with grain-matched fronts",
+  "case_material": "MEL-WHT-34",
+  "back_material": "MEL-WHT-14",
+  "door_material": "WO-RIFT-34",
+  "exposed_material": "WO-RIFT-34",
+  "exposed_back_material": "WO-RIFT-14",
+  "joinery": "dowel",
+  "front_grain": "vertical",
+  "grain_match": true,
+  "cabinets": [
+    {"tag": "B1", "type": "base", "width": 18, "height": 34.5, "depth": 24, "doors": 1, "drawers": 1, "adj_shelves": 1, "finished_ends": "L"},
+    {"tag": "DB1", "type": "drawer_base", "width": 30, "height": 34.5, "depth": 24, "drawers": 4, "notes": "grain-matched drawer bank"},
+    {"tag": "SB1", "type": "sink_base", "width": 36, "height": 34.5, "depth": 24, "doors": 2, "joinery": "confirmat"},
+    {"tag": "B2", "type": "base", "width": 24, "height": 34.5, "depth": 24, "doors": 1, "drawers": 1, "adj_shelves": 1, "finished_ends": "R"},
+    {"tag": "W1", "type": "wall", "width": 30, "height": 36, "depth": 12, "doors": 2, "adj_shelves": 2, "finished_ends": "L"},
+    {"tag": "MW1", "type": "microwave", "width": 30, "height": 36, "depth": 15, "doors": 2, "opening_height": 17, "adj_shelves": 1, "notes": "over-the-counter microwave, open below fixed shelf"},
+    {"tag": "BC1", "type": "bookcase", "width": 30, "height": 84, "depth": 12, "adj_shelves": 4, "joinery": "lamello_clamex", "notes": "open bookcase at end of run"},
+    {"tag": "T1", "type": "tall", "width": 24, "height": 84, "depth": 24, "doors": 2, "adj_shelves": 4, "fixed_shelves": 1, "joinery": "cam_dowel", "finished_ends": "LR", "notes": "pantry, ships knocked down"}
+  ]
+}

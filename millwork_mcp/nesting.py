@@ -12,6 +12,27 @@ from dataclasses import dataclass, field
 from .models import Part, Material
 
 
+def consolidate_grain_groups(parts: list[Part]) -> list[Part]:
+    """Replace grain-matched fronts with the single blank they are cut from.
+
+    The saw cuts the blank; the fronts are recut from it in sequence so the figure
+    stays continuous. Nesting the blank (not the loose fronts) is what guarantees that.
+    """
+    out, seen = [], {}
+    for p in parts:
+        if p.grain_group and p.grain_blank:
+            if p.grain_group not in seen:
+                members = [m for m in parts if m.grain_group == p.grain_group]
+                names = ", ".join(f"{m.seq}:{m.name}" for m in sorted(members, key=lambda m: m.seq))
+                blank = Part(p.cabinet_tag, f"GM blank [{names}]", p.material,
+                             p.grain_blank[0], p.grain_blank[1], p.qty, exposed=True)
+                seen[p.grain_group] = blank
+                out.append(blank)
+        else:
+            out.append(p)
+    return out
+
+
 @dataclass
 class Placement:
     label: str
