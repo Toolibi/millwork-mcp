@@ -1,0 +1,32 @@
+{
+  "_note": "SAMPLE placeholder prices for the demo. Replace with your shop's real costs before quoting.",
+  "kerf": 0.125,
+  "trim": 0.25,
+  "edgeband_per_lf": 0.35,
+  "edgeband_waste": 0.10,
+  "overhead_pct": 0.15,
+  "markup_pct": 0.30,
+  "materials": [
+    {"code": "MEL-WHT-34", "description": "3/4\" white melamine PB", "thickness": 0.75,
+     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 58.00, "grained": false},
+    {"code": "MEL-WHT-14", "description": "1/4\" white melamine back", "thickness": 0.25,
+     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 32.00, "grained": false},
+    {"code": "BB-58", "description": "5/8\" Baltic birch (drawer boxes)", "thickness": 0.625,
+     "sheet_length": 60, "sheet_width": 60, "sheet_cost": 72.00, "grained": true}
+  ],
+  "hardware": {
+    "hinge": 4.25,
+    "slide_pair": 38.00,
+    "pull": 6.50,
+    "shelf_pin": 0.12,
+    "leveler": 1.40
+  },
+  "labor": {
+    "rate_per_hr": 55.00,
+    "assembly_hr_per_box": 0.75,
+    "hr_per_door": 0.15,
+    "hr_per_drawer": 0.40,
+    "machine_hr_per_sheet": 0.20,
+    "edgeband_hr_per_lf": 0.004
+  }
+}
