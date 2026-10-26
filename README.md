@@ -44,6 +44,8 @@ Human review → CAM (S2M Center) → machine
 | `cam_dowel` | 5mm bolt bores at front/rear, 8mm dowels between | 15mm cam face bores + 8mm edge bores | Knock-down, ships flat |
 | `lamello_clamex` | P-System face grooves | P-System edge grooves + 6mm access holes | Invisible knock-down |
 
+**Machine routing.** Every part is cut on the panel saw. Any part with bores, hinge cups, grooves or dados (including the 5mm shelf-pin rows) then goes to the CNC, which bores shelf pins and joints in one program; no line-boring step is assumed. The cut list shows each part's route, `cnc_list.csv` lists every CNC program with its hole and groove counts, and the estimate charges CNC time per piece loaded and per operation.
+
 Connector counts flow into the hardware list, and each method has its own assembly-time factor in the pricing table. Joint bores stop in front of the back dado, and shelf-pin rows skip anywhere a fixed part lands.
 
 **Grain matching.** When fronts are in a grained material, every door and drawer front on a cabinet is laid out on one oversize blank, numbered in sequence (top to bottom, left to right), so the figure runs continuously across the doors and down a drawer bank. The *blank* is what gets nested and cut on the saw; fronts are recut from it in order. `front_grain` sets vertical or horizontal grain, and hinge-cup machining turns with the part.
@@ -66,13 +68,13 @@ Connector counts flow into the hardware list, and each method has its own assemb
 | Main sheet goods | 9 sheets 3/4" melamine, 83% yield | 6 sheets 3/4" rift oak, 72% yield (grain-matched blanks) |
 | Grain-match groups | - | 7 |
 | Special cabinets | pantry | microwave, open bookcase, finished ends |
-| Sell price | ~$3,460 | ~$4,710 |
+| Sell price | ~$3,550 | ~$4,770 |
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                 # 28 tests: construction, joinery, grain match, nesting, estimate, DXF
+python -m pytest -q                 # 30 tests: construction, joinery, grain match, CNC routing, nesting, estimate, DXF
 python -m millwork_mcp.cli examples/sample_kitchen.json
 python -m millwork_mcp.cli examples/white_oak_kitchen.json
 ```

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from .estimate import estimate_job, materials_from_pricing, public
-from .export import export_cutlist_csv, export_part_dxfs, export_saw_list_csv
+from .export import export_cnc_list_csv, export_cutlist_csv, export_part_dxfs, export_saw_list_csv
 from .models import Cabinet, Job
 from .nesting import nest_svg
 
@@ -27,6 +27,7 @@ def run_job(job_data: dict, pricing: dict, out_dir: str | Path) -> dict:
         "estimate_json": out / "estimate.json",
         "cutlist_csv": export_cutlist_csv(est["_parts"], out / "cutlist.csv", mats),
         "saw_list_csv": export_saw_list_csv(est["_nests"], out / "saw_list.csv"),
+        "cnc_list_csv": export_cnc_list_csv(est["_parts"], out / "cnc_list.csv"),
     }
     files["estimate_json"].write_text(json.dumps(public(est), indent=2))
 

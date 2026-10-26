@@ -29,6 +29,26 @@ LAYERS = {
 P_GROOVE_LEN = 55 / 25.4   # approximate P-System groove length; your tool defines the real one
 
 
+CNC_OPS = ("drill", "pocket", "dado", "edge_drill", "pgroove")
+
+
+def route(part: Part) -> str:
+    """Machine routing: every part is cut on the panel saw; parts with bores, cups,
+    grooves or dados (shelf-pin rows included) then go to the CNC."""
+    return "saw > CNC" if any(o["op"] in CNC_OPS for o in part.machining) else "saw"
+
+
+def op_summary(part: Part) -> dict:
+    ops = part.machining
+    return {
+        "shelf_pin_holes": sum(1 for o in ops if o.get("role") == "shelf_pin"),
+        "joint_face_bores": sum(1 for o in ops if o["op"] == "drill" and o.get("role") not in ("shelf_pin",)),
+        "edge_bores": sum(1 for o in ops if o["op"] == "edge_drill"),
+        "hinge_cups": sum(1 for o in ops if o["op"] == "pocket"),
+        "grooves_dados": sum(1 for o in ops if o["op"] in ("dado", "pgroove")),
+    }
+
+
 def _safe(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_")
 
@@ -110,7 +130,7 @@ def export_cutlist_csv(parts: list[Part], path: Path,
     materials_grained = {k: m.grained for k, m in (materials or {}).items()}
     fields = ["cabinet", "part", "material", "qty", "length", "width", "grain",
               "grain_group", "seq", "exposed",
-              "eb_L1", "eb_L2", "eb_W1", "eb_W2", "edgeband_lf", "machining_ops"]
+              "eb_L1", "eb_L2", "eb_W1", "eb_W2", "edgeband_lf", "route", "machining_ops"]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
@@ -123,7 +143,24 @@ def export_cutlist_csv(parts: list[Part], path: Path,
                         "exposed": int(p.exposed),
                         "eb_L1": int(bool(e.get("L1"))), "eb_L2": int(bool(e.get("L2"))),
                         "eb_W1": int(bool(e.get("W1"))), "eb_W2": int(bool(e.get("W2"))),
-                        "edgeband_lf": f"{p.edgeband_lf:.2f}", "machining_ops": len(p.machining)})
+                        "edgeband_lf": f"{p.edgeband_lf:.2f}", "route": route(p),
+                        "machining_ops": len(p.machining)})
+    return path
+
+
+def export_cnc_list_csv(parts: list[Part], path: Path) -> Path:
+    """Parts the CNC bores after the saw, with what each program does."""
+    fields = ["cabinet", "part", "material", "qty", "program", "shelf_pin_holes",
+              "joint_face_bores", "edge_bores", "hinge_cups", "grooves_dados"]
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        for p in parts:
+            if route(p) != "saw > CNC":
+                continue
+            w.writerow({"cabinet": p.cabinet_tag, "part": p.name, "material": p.material,
+                        "qty": p.qty, "program": f"{_safe(p.cabinet_tag)}_{_safe(p.name)}.dxf",
+                        **op_summary(p)})
     return path
 
 

@@ -44,7 +44,9 @@
     "assembly_hr_per_box": 0.75,
     "hr_per_door": 0.15,
     "hr_per_drawer": 0.40,
-    "machine_hr_per_sheet": 0.20,
+    "saw_hr_per_sheet": 0.12,
+    "cnc_min_per_part": 1.5,
+    "cnc_sec_per_op": 2.5,
     "edgeband_hr_per_lf": 0.004,
     "hr_per_grain_match_group": 0.35
   }

@@ -306,3 +306,29 @@ def test_joint_bores_stay_out_of_the_back_dado():
             if o["op"] in ("drill", "pgroove") and o.get("role") != "shelf_pin":
                 r = o.get("dia_mm", 55) / 25.4 / 2
                 assert o["x"] + r < dado_x, (method, o)
+
+
+# ---------------------------------------------------------------- CNC routing
+from millwork_mcp.export import route, op_summary
+
+
+def test_shelf_pin_sides_route_to_cnc_and_plain_panels_stay_on_the_saw():
+    cab = Cabinet("W1", "wall", 30, 30, 12, doors=2, adj_shelves=2)
+    parts = build_parts(cab, job_with(cab))
+    side = find(parts, "Side")
+    assert route(side) == "saw > CNC"
+    assert op_summary(side)["shelf_pin_holes"] > 0
+    assert route(find(parts, "Back")) == "saw"
+    assert route(find(parts, "Adj Shelf")) == "saw"
+    assert route(find(parts, "Door L")) == "saw > CNC"   # hinge cups
+
+
+def test_cnc_list_and_cnc_hours(tmp_path):
+    r = run_job(SAMPLE, PRICING, tmp_path)
+    rows = (tmp_path / "cnc_list.csv").read_text().splitlines()
+    assert rows[0].startswith("cabinet,part,material,qty,program,shelf_pin_holes")
+    assert any(",Side," in row for row in rows[1:])
+    assert not any(",Back," in row for row in rows[1:])
+    lab = r["labor"]
+    assert lab["cnc_hours"] > 0 and lab["cnc_pieces"] > 0
+    assert lab["hours"] > lab["saw_hours"] + lab["cnc_hours"]

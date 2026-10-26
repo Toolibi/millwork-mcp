@@ -12,6 +12,7 @@ from pathlib import Path
 
 from collections import Counter
 
+from .export import CNC_OPS, route
 from .construction import build_job_parts, cabinet_connectors, review_job, ConstructionStandard
 from .joinery import METHODS
 from .models import Job, Material, Part
@@ -90,12 +91,19 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     assembly = sum(c.qty * lab["assembly_hr_per_box"] * jf[c.joinery or job.joinery]
                    for c in job.cabinets)
     gm_groups = sum(1 for p in parts if p.grain_group and p.seq == 1 for _ in range(p.qty))
+    # saw time per sheet, then CNC time: load/unload per machined piece + per operation
+    saw_hr = total_sheets * lab.get("saw_hr_per_sheet", lab.get("machine_hr_per_sheet", 0))
+    cnc_parts = [p for p in parts if route(p) == "saw > CNC"]
+    cnc_pieces = sum(p.qty for p in cnc_parts)
+    cnc_ops = sum(p.qty * sum(1 for o in p.machining if o["op"] in CNC_OPS) for p in cnc_parts)
+    cnc_hr = (cnc_pieces * lab.get("cnc_min_per_part", 0) / 60
+              + cnc_ops * lab.get("cnc_sec_per_op", 0) / 3600)
     labor_hours = (
         assembly
         + gm_groups * lab["hr_per_grain_match_group"]
         + sum(d.qty for d in doors) * lab["hr_per_door"]
         + slides * lab["hr_per_drawer"]
-        + total_sheets * lab["machine_hr_per_sheet"]
+        + saw_hr + cnc_hr
         + eb_lf * lab["edgeband_hr_per_lf"]
     )
     labor_cost = labor_hours * lab["rate_per_hr"]
@@ -115,7 +123,9 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
         "materials": material_lines,
         "edgeband": {"lf": round(eb_lf, 1), "cost": round(eb_cost, 2)},
         "hardware": hardware_lines,
-        "labor": {"hours": round(labor_hours, 2), "rate": lab["rate_per_hr"], "cost": round(labor_cost, 2)},
+        "labor": {"hours": round(labor_hours, 2), "rate": lab["rate_per_hr"], "cost": round(labor_cost, 2),
+                  "saw_hours": round(saw_hr, 2), "cnc_hours": round(cnc_hr, 2),
+                  "cnc_pieces": cnc_pieces, "cnc_operations": cnc_ops},
         "totals": {
             "direct_cost": round(direct, 2),
             "overhead": round(overhead, 2),
