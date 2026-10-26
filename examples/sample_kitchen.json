@@ -5,14 +5,94 @@
   "back_material": "MEL-WHT-14",
   "door_material": "MEL-WHT-34",
   "cabinets": [
-    {"tag": "B1", "type": "base", "width": 18, "height": 34.5, "depth": 24, "doors": 1, "drawers": 1, "adj_shelves": 1},
-    {"tag": "B2", "type": "drawer_base", "width": 15, "height": 34.5, "depth": 24, "drawers": 3},
-    {"tag": "SB1", "type": "sink_base", "width": 36, "height": 34.5, "depth": 24, "doors": 2},
-    {"tag": "B3", "type": "base", "width": 30, "height": 34.5, "depth": 24, "doors": 2, "drawers": 1, "adj_shelves": 1},
-    {"tag": "B4", "type": "base", "width": 24, "height": 34.5, "depth": 24, "doors": 1, "drawers": 1, "adj_shelves": 1},
-    {"tag": "W1", "type": "wall", "width": 30, "height": 30, "depth": 12, "doors": 2, "adj_shelves": 2},
-    {"tag": "W2", "type": "wall", "width": 18, "height": 30, "depth": 12, "doors": 1, "adj_shelves": 2, "qty": 2},
-    {"tag": "W3", "type": "wall", "width": 36, "height": 15, "depth": 12, "doors": 2, "notes": "over refrigerator"},
-    {"tag": "T1", "type": "tall", "width": 24, "height": 84, "depth": 24, "doors": 2, "adj_shelves": 4, "notes": "pantry"}
-  ]
+    {
+      "tag": "B1",
+      "type": "base",
+      "width": 18,
+      "height": 34.5,
+      "depth": 24,
+      "doors": 1,
+      "drawers": 1,
+      "adj_shelves": 1,
+      "finished_ends": "L"
+    },
+    {
+      "tag": "B2",
+      "type": "drawer_base",
+      "width": 15,
+      "height": 34.5,
+      "depth": 24,
+      "drawers": 3
+    },
+    {
+      "tag": "SB1",
+      "type": "sink_base",
+      "width": 36,
+      "height": 34.5,
+      "depth": 24,
+      "doors": 2
+    },
+    {
+      "tag": "B3",
+      "type": "base",
+      "width": 30,
+      "height": 34.5,
+      "depth": 24,
+      "doors": 2,
+      "drawers": 1,
+      "adj_shelves": 1
+    },
+    {
+      "tag": "B4",
+      "type": "base",
+      "width": 24,
+      "height": 34.5,
+      "depth": 24,
+      "doors": 1,
+      "drawers": 1,
+      "adj_shelves": 1
+    },
+    {
+      "tag": "W1",
+      "type": "wall",
+      "width": 30,
+      "height": 30,
+      "depth": 12,
+      "doors": 2,
+      "adj_shelves": 2
+    },
+    {
+      "tag": "W2",
+      "type": "wall",
+      "width": 18,
+      "height": 30,
+      "depth": 12,
+      "doors": 1,
+      "adj_shelves": 2,
+      "qty": 2,
+      "finished_ends": "L"
+    },
+    {
+      "tag": "W3",
+      "type": "wall",
+      "width": 36,
+      "height": 15,
+      "depth": 12,
+      "doors": 2,
+      "notes": "over refrigerator"
+    },
+    {
+      "tag": "T1",
+      "type": "tall",
+      "width": 24,
+      "height": 84,
+      "depth": 24,
+      "doors": 2,
+      "adj_shelves": 4,
+      "notes": "pantry",
+      "finished_ends": "R"
+    }
+  ],
+  "finished_end_method": "prelam",
+  "finished_end_laminate": "HPL-WHT"
 }

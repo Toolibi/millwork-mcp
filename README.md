@@ -35,6 +35,12 @@ Human review → CAM (S2M Center) → machine
 
 ### Construction methods
 
+**Shop construction spec (defaults).**
+
+- **Backs and nailers:** every cabinet attached to a wall gets a 1/4" back in a dado set 3/4" in from the rear, plus two 3/4" plywood nailers, 4" wide, running the length between the sides. One nailer sits under the top and one above the bottom. They fill the back setback flush with the case rear, so the cabinet screws to the wall through solid plywood, and the nailer ends are bored for the same joinery as the case. Freestanding pieces set `against_wall: false`.
+- **Base cabinet tops:** two 4" rails. The front rail is edgebanded to match the cabinet front; the rear rail is not banded.
+- **Finished ends:** pre-laminated before machining. Laminate is pressed onto an oversize core blank (1/2" per edge), trimmed on the saw, and then bored on the CNC, so every hole goes through a finished face. The saw list nests the core blank and the laminate separately, the route reads `prelam > saw > CNC`, and the estimate adds press time per panel. Set `finished_end_method: exposed_material` to use veneer ply instead.
+
 **Case joinery, laid out on the 32mm system.** Every joint starts on the 37mm system line and steps on the 32mm grid, so the same drill block that bores shelf-pin rows bores the joints. Joinery can be set per job and overridden per cabinet.
 
 | Method | Side (gable) | Horizontal (bottom, top, stretcher, fixed shelf) | Notes |
@@ -64,17 +70,17 @@ Connector counts flow into the hardware list, and each method has its own assemb
 | | `sample_kitchen.json` | `white_oak_kitchen.json` |
 |---|---|---|
 | Cabinets | 10, melamine, dowel | 8, rift white oak fronts, all four joinery methods |
-| Parts generated | 118 | 106 |
+| Parts generated | 138 | 120 |
 | Main sheet goods | 9 sheets 3/4" melamine, 83% yield | 6 sheets 3/4" rift oak, 72% yield (grain-matched blanks) |
 | Grain-match groups | - | 7 |
 | Special cabinets | pantry | microwave, open bookcase, finished ends |
-| Sell price | ~$3,550 | ~$4,770 |
+| Sell price | ~$3,950 (incl. 4 pre-lam ends, nailers) | ~$4,920 |
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                 # 30 tests: construction, joinery, grain match, CNC routing, nesting, estimate, DXF
+python -m pytest -q                 # 35 tests: construction spec, joinery, grain match, CNC routing, nesting, estimate, DXF
 python -m millwork_mcp.cli examples/sample_kitchen.json
 python -m millwork_mcp.cli examples/white_oak_kitchen.json
 ```

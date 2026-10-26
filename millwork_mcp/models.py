@@ -35,6 +35,7 @@ class Cabinet:
     opening_height: float = 0.0     # microwave: clear opening below the fixed shelf
     finished_ends: str = ""         # "", "L", "R" or "LR": sides seen from outside
     joinery: Optional[str] = None   # overrides the job default
+    against_wall: bool = True       # attached to a wall -> gets hanging nailers
     notes: str = ""
 
     def validate(self, job: "Job | None" = None) -> list[str]:
@@ -82,6 +83,8 @@ class Part:
     seq: Optional[int] = None           # position within the grain-match group
     grain_blank: Optional[tuple] = None  # (length, width) of the blank the group comes from
     exposed: bool = False               # face is seen in the finished cabinet
+    laminate: Optional[str] = None      # pre-lam face (Material.code), pressed before machining
+    prelam_blank: Optional[tuple] = None  # (length, width) of the oversize core blank
 
     @property
     def area_sqft(self) -> float:
@@ -113,3 +116,6 @@ class Job:
     joinery: str = "dowel"                       # dowel | confirmat | cam_dowel | lamello_clamex
     front_grain: str = "vertical"                # vertical | horizontal (grained fronts only)
     grain_match: bool = True                     # cut each cabinet's fronts from one blank
+    finished_end_method: str = "prelam"          # prelam | exposed_material
+    finished_end_laminate: Optional[str] = None  # laminate pressed on finished ends
+    nailer_material: str = "PLY-34"              # 3/4" plywood hanging nailers

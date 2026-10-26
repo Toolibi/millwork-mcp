@@ -35,7 +35,8 @@ CNC_OPS = ("drill", "pocket", "dado", "edge_drill", "pgroove")
 def route(part: Part) -> str:
     """Machine routing: every part is cut on the panel saw; parts with bores, cups,
     grooves or dados (shelf-pin rows included) then go to the CNC."""
-    return "saw > CNC" if any(o["op"] in CNC_OPS for o in part.machining) else "saw"
+    r = "saw > CNC" if any(o["op"] in CNC_OPS for o in part.machining) else "saw"
+    return f"prelam > {r}" if part.laminate else r
 
 
 def op_summary(part: Part) -> dict:
@@ -84,7 +85,13 @@ def part_to_dxf(part: Part, material: Material, path: Path) -> Path:
             msp.add_line((op["x"], y0), (op["x"], y1), dxfattribs={"layer": layer})
         elif kind == "pgroove":
             half = P_GROOVE_LEN / 2
-            if op["orient"] == "face":
+            if op["orient"] == "face_v":    # groove running up the side (on-edge part)
+                layer = layer_for(LAYERS["pgroove_face"].format(system=op["system"]), 2)
+                x = op["x"]
+                msp.add_lwpolyline([(x - 0.1, op["y"] - half), (x + 0.1, op["y"] - half),
+                                    (x + 0.1, op["y"] + half), (x - 0.1, op["y"] + half)],
+                                   close=True, dxfattribs={"layer": layer})
+            elif op["orient"] == "face":
                 layer = layer_for(LAYERS["pgroove_face"].format(system=op["system"]), 2)
                 y = op["y"]
                 msp.add_lwpolyline([(op["x"] - half, y - 0.1), (op["x"] + half, y - 0.1),
@@ -129,7 +136,7 @@ def export_cutlist_csv(parts: list[Part], path: Path,
                        materials: dict[str, Material] | None = None) -> Path:
     materials_grained = {k: m.grained for k, m in (materials or {}).items()}
     fields = ["cabinet", "part", "material", "qty", "length", "width", "grain",
-              "grain_group", "seq", "exposed",
+              "grain_group", "seq", "exposed", "laminate",
               "eb_L1", "eb_L2", "eb_W1", "eb_W2", "edgeband_lf", "route", "machining_ops"]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
@@ -140,7 +147,7 @@ def export_cutlist_csv(parts: list[Part], path: Path,
                         "qty": p.qty, "length": f"{p.length:.4f}", "width": f"{p.width:.4f}",
                         "grain": "along length" if materials_grained.get(p.material) else "",
                         "grain_group": p.grain_group or "", "seq": p.seq or "",
-                        "exposed": int(p.exposed),
+                        "exposed": int(p.exposed), "laminate": p.laminate or "",
                         "eb_L1": int(bool(e.get("L1"))), "eb_L2": int(bool(e.get("L2"))),
                         "eb_W1": int(bool(e.get("W1"))), "eb_W2": int(bool(e.get("W2"))),
                         "edgeband_lf": f"{p.edgeband_lf:.2f}", "route": route(p),
@@ -156,7 +163,7 @@ def export_cnc_list_csv(parts: list[Part], path: Path) -> Path:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         for p in parts:
-            if route(p) != "saw > CNC":
+            if not route(p).endswith("CNC"):
                 continue
             w.writerow({"cabinet": p.cabinet_tag, "part": p.name, "material": p.material,
                         "qty": p.qty, "program": f"{_safe(p.cabinet_tag)}_{_safe(p.name)}.dxf",

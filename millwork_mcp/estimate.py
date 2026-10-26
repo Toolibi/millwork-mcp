@@ -16,7 +16,7 @@ from .export import CNC_OPS, route
 from .construction import build_job_parts, cabinet_connectors, review_job, ConstructionStandard
 from .joinery import METHODS
 from .models import Job, Material, Part
-from .nesting import consolidate_grain_groups, nest_parts, NestResult
+from .nesting import prepare_for_saw, nest_parts, NestResult
 
 
 def load_pricing(path: str | Path) -> dict:
@@ -40,8 +40,8 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     hw = pricing["hardware"]
     lab = pricing["labor"]
     parts = build_job_parts(job, std, mats)
-    # grain-matched fronts are nested as the blank they are cut from
-    by_mat = group_parts(consolidate_grain_groups(parts))
+    # nest what the saw really cuts: grain-match blanks, pre-lam core + laminate blanks
+    by_mat = group_parts(prepare_for_saw(parts))
 
     # --- sheet goods from the real panel-saw nest ---
     nests: dict[str, NestResult] = {}
@@ -91,6 +91,7 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     assembly = sum(c.qty * lab["assembly_hr_per_box"] * jf[c.joinery or job.joinery]
                    for c in job.cabinets)
     gm_groups = sum(1 for p in parts if p.grain_group and p.seq == 1 for _ in range(p.qty))
+    prelam_panels = sum(p.qty for p in parts if p.laminate)
     # saw time per sheet, then CNC time: load/unload per machined piece + per operation
     saw_hr = total_sheets * lab.get("saw_hr_per_sheet", lab.get("machine_hr_per_sheet", 0))
     cnc_parts = [p for p in parts if route(p) == "saw > CNC"]
@@ -101,6 +102,7 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     labor_hours = (
         assembly
         + gm_groups * lab["hr_per_grain_match_group"]
+        + prelam_panels * lab.get("hr_per_prelam_panel", 0)
         + sum(d.qty for d in doors) * lab["hr_per_door"]
         + slides * lab["hr_per_drawer"]
         + saw_hr + cnc_hr
@@ -119,6 +121,7 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
         "part_count": sum(p.qty for p in parts),
         "joinery": sorted({c.joinery or job.joinery for c in job.cabinets}),
         "grain_match_groups": gm_groups,
+        "prelam_panels": prelam_panels,
         "review_flags": review_job(job, mats),
         "materials": material_lines,
         "edgeband": {"lf": round(eb_lf, 1), "cost": round(eb_cost, 2)},

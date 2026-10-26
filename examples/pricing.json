@@ -13,6 +13,10 @@
      "sheet_length": 97, "sheet_width": 49, "sheet_cost": 32.00, "grained": false},
     {"code": "BB-58", "description": "5/8\" Baltic birch (drawer boxes)", "thickness": 0.625,
      "sheet_length": 60, "sheet_width": 60, "sheet_cost": 72.00, "grained": true},
+    {"code": "PLY-34", "description": "3/4\" hardwood plywood (nailers)", "thickness": 0.75,
+     "sheet_length": 96, "sheet_width": 48, "sheet_cost": 62.00, "grained": true},
+    {"code": "HPL-WHT", "description": "HPL laminate, white, for pre-lam finished ends", "thickness": 0.039,
+     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 48.00, "grained": false},
     {"code": "WO-RIFT-34", "description": "3/4\" rift white oak veneer ply", "thickness": 0.75,
      "sheet_length": 97, "sheet_width": 49, "sheet_cost": 165.00, "grained": true},
     {"code": "WO-RIFT-14", "description": "1/4\" rift white oak veneer ply (exposed backs)", "thickness": 0.25,
@@ -48,6 +52,7 @@
     "cnc_min_per_part": 1.5,
     "cnc_sec_per_op": 2.5,
     "edgeband_hr_per_lf": 0.004,
-    "hr_per_grain_match_group": 0.35
+    "hr_per_grain_match_group": 0.35,
+    "hr_per_prelam_panel": 0.30
   }
 }

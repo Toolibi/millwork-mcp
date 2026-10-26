@@ -27,7 +27,10 @@ class ConstructionStandard:
     back_t: float = 0.25
     back_dado_depth: float = 0.375
     back_setback: float = 0.75      # back dado distance from rear edge of side
-    stretcher_w: float = 4.0        # base cabinet top stretchers
+    stretcher_w: float = 4.0        # base cabinet top rails (front + rear)
+    nailer_w: float = 4.0           # 3/4" plywood hanging nailers, top and bottom
+    nailer_t: float = 0.75          # sits in the back setback, flush with the case rear
+    prelam_allowance: float = 0.5   # oversize per edge on a pre-lam blank before trimming
     fit_clearance: float = 1 / 32   # back / shelf fit clearance
     shelf_front_setback: float = 0.125
     edge_reveal: float = 1 / 16     # door reveal at each cabinet edge (full overlay)
@@ -105,6 +108,7 @@ class Horizontal:
     x_offsets: list     # distance from the side's front edge, one per piece
     exposed: bool = False
     joint_depth: float = 0.0   # connector zone; stops in front of the back dado
+    eb_front: bool = True      # front edge banded to match the cabinet front
 
     def __post_init__(self):
         if not self.joint_depth:
@@ -116,8 +120,11 @@ def _horizontals(cab: Cabinet, std: ConstructionStandard) -> list[Horizontal]:
     back_face = D - std.back_setback - std.back_t   # fixed shelves stop at the back
     hs = [Horizontal("Bottom", D, 1, [t / 2], [0.0], joint_depth=back_face)]
     if cab.type in BASE_TYPES:
+        # base tops: two rails; the front one is banded to match the cabinet front
         rear = D - std.back_setback - std.back_t - std.stretcher_w
-        hs.append(Horizontal("Top Stretcher", std.stretcher_w, 2, [H - t / 2] * 2, [0.0, rear]))
+        hs.append(Horizontal("Top Rail Front", std.stretcher_w, 1, [H - t / 2], [0.0]))
+        hs.append(Horizontal("Top Rail Rear", std.stretcher_w, 1, [H - t / 2], [rear],
+                             eb_front=False))
     else:
         hs.append(Horizontal("Top", D, 1, [H - t / 2], [0.0], joint_depth=back_face))
     fixed = cab.fixed_shelves
@@ -132,6 +139,34 @@ def _horizontals(cab: Cabinet, std: ConstructionStandard) -> list[Horizontal]:
     return hs
 
 
+@dataclass
+class Nailer:
+    name: str
+    y0: float   # bottom edge of the nailer on the side, inches from the side bottom
+
+
+def _nailers(cab: Cabinet, std: ConstructionStandard) -> list[Nailer]:
+    """Hanging nailers for cabinets attached to a wall: 3/4" plywood, 4" wide, running
+    between the sides, one under the top and one above the bottom. They sit behind the
+    1/4" back in the 3/4" back setback, flush with the rear of the case, so the cabinet
+    screws to the wall through solid plywood."""
+    if not cab.against_wall:
+        return []
+    t, H = std.case_t, cab.height
+    return [Nailer("Nailer Top", H - t - std.nailer_w), Nailer("Nailer Bottom", t)]
+
+
+def _nailer_side_ops(method, cab: Cabinet, std: ConstructionStandard, n: Nailer) -> list[dict]:
+    x = cab.depth - std.nailer_t / 2          # centre of the nailer thickness
+    ops = []
+    for pos in connector_positions(std.nailer_w, method):
+        for o in side_ops(method, [x], n.y0 + pos, std.case_t):
+            if o["op"] == "pgroove":
+                o["orient"] = "face_v"      # groove runs up the side for an on-edge part
+            ops.append(o)
+    return ops
+
+
 def cabinet_connectors(cab: Cabinet, job: Job, std: ConstructionStandard | None = None) -> Counter:
     """Case connectors for one cabinet (times its qty)."""
     std = std or ConstructionStandard()
@@ -142,6 +177,9 @@ def cabinet_connectors(cab: Cabinet, job: Job, std: ConstructionStandard | None 
         per_joint = connectors_for(method, pos)
         for k, v in per_joint.items():
             total[k] += v * 2 * h.qty * cab.qty   # two ends per horizontal
+    for _ in _nailers(cab, std):
+        for k, v in connectors_for(method, connector_positions(std.nailer_w, method)).items():
+            total[k] += v * 2 * cab.qty
     return total
 
 
@@ -165,6 +203,9 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
     for h in horizontals:
         for y, off in zip(h.y_centers, h.x_offsets):
             side_mach += side_ops(method, connector_positions(h.joint_depth, method, off), y, t)
+    nailers = _nailers(cab, std)
+    for n in nailers:
+        side_mach += _nailer_side_ops(method, cab, std, n)
     if cab.adj_shelves:
         start = t + 3.0
         if cab.type == "microwave":   # adjustable shelves only above the fixed shelf
@@ -175,7 +216,17 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
                       if all(abs(o["y"] - jy) > clear for jy in joint_ys)]
 
     fin = len(set(cab.finished_ends.upper()) & {"L", "R"})
-    if fin and job.exposed_material and not is_open:
+    a = std.prelam_allowance
+    if fin and not is_open and job.finished_end_method == "prelam" and job.finished_end_laminate:
+        # pre-lam: laminate pressed onto an oversize core blank, trimmed on the saw,
+        # THEN machined, so the CNC bores through a finished, flat face
+        parts.append(Part(cab.tag, "Side (finished, pre-lam)", case_mat, H, D, fin * q,
+                          dict(front_only), side_mach, exposed=True,
+                          laminate=job.finished_end_laminate,
+                          prelam_blank=(H + 2 * a, D + 2 * a)))
+        if fin < 2:
+            parts.append(Part(cab.tag, "Side", case_mat, H, D, (2 - fin) * q, dict(front_only), side_mach))
+    elif fin and job.exposed_material and not is_open:
         parts.append(Part(cab.tag, "Side (finished)", job.exposed_material, H, D, fin * q,
                           dict(front_only), side_mach, exposed=True))
         if fin < 2:
@@ -189,7 +240,7 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
         pos = connector_positions(h.joint_depth, method)
         mach = (horizontal_ops(method, pos, "W1", inside_w)
                 + horizontal_ops(method, pos, "W2", inside_w))
-        eb = dict(front_only) if h.name != "Top Stretcher" else {}
+        eb = dict(front_only) if h.eb_front else {}
         parts.append(Part(cab.tag, h.name, case_mat, inside_w, h.depth, h.qty * q, eb, mach,
                           exposed=is_open or h.exposed))
 
@@ -200,6 +251,14 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
         back_h = H - 2 * t + 2 * std.back_dado_depth - std.fit_clearance
     back_w = inside_w + 2 * std.back_dado_depth - std.fit_clearance
     parts.append(Part(cab.tag, "Back", back_mat, back_h, back_w, q, exposed=is_open))
+
+    # --- hanging nailers: 3/4" ply, 4" wide x the length between the sides ---
+    for n in nailers:
+        pos = connector_positions(std.nailer_w, method)
+        mach = (horizontal_ops(method, pos, "W1", inside_w)
+                + horizontal_ops(method, pos, "W2", inside_w))
+        parts.append(Part(cab.tag, n.name, job.nailer_material, inside_w, std.nailer_w, q,
+                          {}, mach))
 
     # --- adjustable shelves ---
     if cab.adj_shelves:
@@ -327,7 +386,17 @@ def review_job(job: Job, materials: dict[str, Material] | None = None) -> list[s
         if c.type in OPEN_TYPES and not job.exposed_material:
             flags.append(f"{c.tag}: open cabinet with no exposed material set - interior will be "
                          f"{job.case_material}; confirm finish")
+    if job.finished_end_method not in ("prelam", "exposed_material"):
+        flags.append(f"Unknown finished_end_method '{job.finished_end_method}' - use prelam or exposed_material")
+    if job.finished_end_method == "prelam" and not job.finished_end_laminate and \
+            any(c.finished_ends for c in job.cabinets if c.type not in OPEN_TYPES):
+        flags.append("Finished ends are specified as pre-lam but no laminate is set "
+                     "(finished_end_laminate) - finished sides will be plain case material")
     if materials:
+        nm = materials.get(job.nailer_material)
+        if nm and abs(nm.thickness - ConstructionStandard().back_setback) > 1e-3:
+            flags.append(f"Nailer material {nm.code} is {nm.thickness}\" thick but the back setback "
+                         f"is {ConstructionStandard().back_setback}\" - nailers will not sit flush")
         dm = materials.get(job.door_material)
         if dm and dm.grained and not job.grain_match:
             flags.append("Grained fronts without grain match - figure will not run across doors/drawers")

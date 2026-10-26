@@ -12,6 +12,24 @@ from dataclasses import dataclass, field
 from .models import Part, Material
 
 
+def prepare_for_saw(parts: list[Part]) -> list[Part]:
+    """What the panel saw actually cuts.
+
+    * grain-matched fronts -> the one blank they are recut from
+    * pre-lam finished ends -> an oversize core blank plus an oversize laminate piece;
+      they are pressed together, then trimmed to size and machined
+    """
+    out = []
+    for p in consolidate_grain_groups(parts):
+        if p.laminate and p.prelam_blank:
+            L, W = p.prelam_blank
+            out.append(Part(p.cabinet_tag, f"PRELAM core blank [{p.name}]", p.material, L, W, p.qty))
+            out.append(Part(p.cabinet_tag, f"PRELAM laminate [{p.name}]", p.laminate, L, W, p.qty))
+        else:
+            out.append(p)
+    return out
+
+
 def consolidate_grain_groups(parts: list[Part]) -> list[Part]:
     """Replace grain-matched fronts with the single blank they are cut from.
 

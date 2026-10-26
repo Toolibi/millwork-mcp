@@ -29,7 +29,9 @@ def test_base_cabinet_dimensions():
     side, bottom = find(parts, "Side"), find(parts, "Bottom")
     assert (side.length, side.width, side.qty) == (34.5, 24, 2)
     assert bottom.length == pytest.approx(28.5)          # 30 - 2 x 3/4
-    assert find(parts, "Top Stretcher").qty == 2
+    front, rear = find(parts, "Top Rail Front"), find(parts, "Top Rail Rear")
+    assert (front.width, rear.width) == (4.0, 4.0)
+    assert front.edgeband == {"L1": True} and rear.edgeband == {}   # front rail banded only
     door = find(parts, "Door L")
     # full overlay: (30 - 2/16 reveal - 1/8 gap) / 2
     assert door.width == pytest.approx((30 - 0.125 - 0.125) / 2)
@@ -39,7 +41,7 @@ def test_base_cabinet_dimensions():
 def test_wall_cabinet_has_top_not_stretchers():
     cab = Cabinet("W1", "wall", 30, 30, 12, doors=2)
     names = {p.name for p in build_parts(cab, job_with(cab))}
-    assert "Top" in names and "Top Stretcher" not in names
+    assert "Top" in names and "Top Rail Front" not in names
 
 
 def test_drawer_base_fronts_fill_height():
@@ -150,11 +152,13 @@ def test_dowel_cabinet_bores_both_parts():
     edge_dowels = [o for o in bottom.machining if o["op"] == "edge_drill"]
     n_bottom = len(connector_positions(24 - 0.75 - 0.25, METHODS["dowel"]))
     n_stretch = len(connector_positions(4, METHODS["dowel"]))
-    assert len(side_dowels) == n_bottom + 2 * n_stretch       # bottom + front & rear stretcher
+    n_nailer = len(connector_positions(4, METHODS["dowel"]))
+    # bottom + front & rear top rails + top & bottom nailers
+    assert len(side_dowels) == n_bottom + 2 * n_stretch + 2 * n_nailer
     assert len(edge_dowels) == 2 * n_bottom                    # both ends of the bottom
     assert all(o["y"] == pytest.approx(0.375) for o in side_dowels[:n_bottom])
     count = cabinet_connectors(cab, job_with(cab))
-    assert count["dowel"] == 2 * (n_bottom + 2 * n_stretch)
+    assert count["dowel"] == 2 * (n_bottom + 2 * n_stretch + 2 * n_nailer)
 
 
 def test_confirmat_uses_through_holes_and_caps():
@@ -171,7 +175,8 @@ def test_cam_dowel_puts_cams_at_the_ends_and_dowels_between():
     cams = [o for o in bottom.machining if o.get("role") == "cam"]
     assert len(cams) == 4 and all(o["dia_mm"] == 15 for o in cams)   # 2 per end
     c = cabinet_connectors(cab, job_with(cab))
-    assert c["cam_bolt_set"] == 2 * 2 * 2 and c["dowel"] > 0      # 2 horizontals x 2 ends x 2
+    # (2 horizontals + 2 nailers) x 2 ends x 2 cams
+    assert c["cam_bolt_set"] == 4 * 2 * 2 and c["dowel"] > 0
 
 
 def test_clamex_cuts_p_grooves_and_access_holes():
@@ -301,11 +306,13 @@ def test_joint_bores_stay_out_of_the_back_dado():
     for method in METHODS:
         cab = Cabinet("B1", "base", 30, 34.5, 24, doors=2, joinery=method)
         side = find(build_parts(cab, job_with(cab)), "Side")
-        dado_x = 24 - 0.75 - 0.25
+        dado_front, dado_rear = 24 - 0.75 - 0.25, 24 - 0.75
         for o in side.machining:
             if o["op"] in ("drill", "pgroove") and o.get("role") != "shelf_pin":
-                r = o.get("dia_mm", 55) / 25.4 / 2
-                assert o["x"] + r < dado_x, (method, o)
+                r = 0.1 if o["op"] == "pgroove" and o.get("orient") == "face_v" else \
+                    o.get("dia_mm", 55) / 25.4 / 2
+                # every joint bore clears the dado: case joints in front, nailer joints behind
+                assert o["x"] + r < dado_front or o["x"] - r > dado_rear, (method, o)
 
 
 # ---------------------------------------------------------------- CNC routing
@@ -332,3 +339,60 @@ def test_cnc_list_and_cnc_hours(tmp_path):
     lab = r["labor"]
     assert lab["cnc_hours"] > 0 and lab["cnc_pieces"] > 0
     assert lab["hours"] > lab["saw_hours"] + lab["cnc_hours"]
+
+
+
+# ---------------------------------------------------------------- shop construction spec
+def test_wall_attached_cabinets_get_quarter_back_and_two_ply_nailers():
+    for cab in (Cabinet("W1", "wall", 30, 30, 12, doors=2),
+                Cabinet("B1", "base", 30, 34.5, 24, doors=2),
+                Cabinet("T1", "tall", 24, 84, 24, doors=2)):
+        parts = build_parts(cab, job_with(cab), materials=MATS)
+        assert find(parts, "Back").material == "MEL-WHT-14"           # 1/4" back
+        for name in ("Nailer Top", "Nailer Bottom"):
+            n = find(parts, name)
+            assert n.material == "PLY-34" and MATS["PLY-34"].thickness == 0.75
+            assert (n.length, n.width, n.qty) == (cab.width - 1.5, 4.0, 1)
+            assert n.machining, "nailer ends must be bored for the case joinery"
+        side = find(parts, "Side")
+        behind_back = [o for o in side.machining if o["x"] > cab.depth - 0.75]
+        assert behind_back, "side must be bored for the nailers behind the back"
+        ys = sorted(o["y"] for o in behind_back)
+        assert ys[0] > 0.75 and ys[0] < 0.75 + 4              # bottom nailer above the bottom
+        assert ys[-1] < cab.height - 0.75 and ys[-1] > cab.height - 0.75 - 4  # top nailer below top
+
+
+def test_freestanding_cabinet_has_no_nailers():
+    cab = Cabinet("BC1", "bookcase", 30, 72, 12, against_wall=False)
+    names = {p.name for p in build_parts(cab, job_with(cab))}
+    assert not names & {"Nailer Top", "Nailer Bottom"}
+
+
+def test_prelam_finished_end_is_laminated_before_machining():
+    cab = Cabinet("B1", "base", 18, 34.5, 24, doors=1, adj_shelves=1, finished_ends="L")
+    job = job_with(cab)
+    job.finished_end_laminate = "HPL-WHT"
+    parts = build_parts(cab, job, materials=MATS)
+    fin = find(parts, "Side (finished, pre-lam)")
+    assert fin.material == "MEL-WHT-34" and fin.laminate == "HPL-WHT" and fin.qty == 1
+    assert fin.prelam_blank == (34.5 + 1.0, 24 + 1.0)
+    assert route(fin) == "prelam > saw > CNC"
+    assert find(parts, "Side").qty == 1 and route(find(parts, "Side")) == "saw > CNC"
+    from millwork_mcp.nesting import prepare_for_saw
+    saw = prepare_for_saw(parts)
+    core = [p for p in saw if p.name.startswith("PRELAM core")]
+    lam = [p for p in saw if p.name.startswith("PRELAM laminate")]
+    assert core[0].material == "MEL-WHT-34" and lam[0].material == "HPL-WHT"
+    assert (core[0].length, core[0].width) == fin.prelam_blank
+
+
+def test_prelam_without_laminate_is_flagged():
+    job = job_with(Cabinet("B1", "base", 18, 34.5, 24, doors=1, finished_ends="L"))
+    assert "no laminate is set" in " ".join(review_job(job))
+
+
+def test_sample_estimate_charges_prelam_and_laminate():
+    est = estimate_job(job_from_dict(SAMPLE), PRICING)
+    assert est["prelam_panels"] == 1 + 2 + 1     # B1 L, W2 L x2, T1 R
+    assert any(m["material"] == "HPL-WHT" for m in est["materials"])
+    assert any(m["material"] == "PLY-34" for m in est["materials"])

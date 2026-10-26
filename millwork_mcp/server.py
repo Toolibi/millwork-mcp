@@ -18,7 +18,7 @@ from .construction import build_parts, review_job
 from .estimate import load_pricing, materials_from_pricing
 from .models import Cabinet
 from .joinery import METHODS
-from .nesting import consolidate_grain_groups, nest_parts, saw_cut_list
+from .nesting import prepare_for_saw, nest_parts, saw_cut_list
 from .pipeline import job_from_dict, run_job
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,9 +33,10 @@ def review_cabinet_schedule(job: dict) -> dict:
     Returns review flags (duplicate tags, odd sizes, oversized doors, sink-base drawers...).
     Job format (inches): {job_number, name, case_material, door_material, exposed_material,
     joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
-    grain_match: bool, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
+    grain_match: bool, finished_end_method: prelam|exposed_material, finished_end_laminate,
+    nailer_material, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
     microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
-    opening_height, finished_ends: ""|L|R|LR, joinery, notes}]}
+    opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
     """
     j = job_from_dict(job)
     mats = materials_from_pricing(load_pricing(PRICING_PATH))
@@ -48,9 +49,10 @@ def build_cutlist(job: dict) -> dict:
     construction standard (frameless, 32mm system).
     Job format (inches): {job_number, name, case_material, door_material, exposed_material,
     joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
-    grain_match: bool, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
+    grain_match: bool, finished_end_method: prelam|exposed_material, finished_end_laminate,
+    nailer_material, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
     microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
-    opening_height, finished_ends: ""|L|R|LR, joinery, notes}]}
+    opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
     """
     j = job_from_dict(job)
     mats = materials_from_pricing(load_pricing(PRICING_PATH))
@@ -66,8 +68,8 @@ def nest_panel_saw(job: dict, material: str) -> dict:
     Returns sheet count, yield and the operator rip/crosscut list."""
     j = job_from_dict(job)
     mats = materials_from_pricing(load_pricing(PRICING_PATH))
-    parts = [p for c in j.cabinets for p in build_parts(c, j, materials=mats) if p.material == material]
-    res = nest_parts(consolidate_grain_groups(parts), mats[material])
+    parts = [p for c in j.cabinets for p in build_parts(c, j, materials=mats)]
+    res = nest_parts([p for p in prepare_for_saw(parts) if p.material == material], mats[material])
     return {**res.summary(), "saw_list": saw_cut_list(res)}
 
 
@@ -78,9 +80,10 @@ def estimate_and_export(job: dict) -> dict:
     machining layers, nest diagrams).
     Job format (inches): {job_number, name, case_material, door_material, exposed_material,
     joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
-    grain_match: bool, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
+    grain_match: bool, finished_end_method: prelam|exposed_material, finished_end_laminate,
+    nailer_material, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
     microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
-    opening_height, finished_ends: ""|L|R|LR, joinery, notes}]}
+    opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
     """
     out = OUTPUT_ROOT / job["job_number"]
     return run_job(job, load_pricing(PRICING_PATH), out)
