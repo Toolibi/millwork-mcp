@@ -4,10 +4,11 @@ Each method produces two sets of machining for every case joint:
   * face operations on the side (gable), at the centre line of the horizontal part
   * edge / face operations on the end of the horizontal part (bottom, top, stretcher, fixed shelf)
 
-Connector positions start at the 37mm system line from the front edge and step on the
-32mm grid, so the same CNC drill block that bores shelf-pin rows also bores the joints.
-Sizes below are common industry values; confirm them against your connector supplier's
-spec sheet and your CAM tooling before cutting.
+Dowels follow the shop spec: 8mm in 3/4" material, 5mm in 1/2" and 3/8" material. The
+first dowel is 32mm from the front, the next 64mm further (96mm), then every 96mm to
+the back - every position lands on the 32mm grid. Other connectors start at the 37mm
+system line and step on the 32mm grid. Sizes are common industry values; confirm them
+against your supplier's spec sheet and your CAM tooling before cutting.
 """
 from __future__ import annotations
 
@@ -30,8 +31,9 @@ class JoineryMethod:
 
 METHODS: dict[str, JoineryMethod] = {
     "dowel": JoineryMethod(
-        "dowel", "8 x 35mm dowel, 32mm system", 96, 2, True, False, False,
-        "8mm face bore in the side, 8mm edge bore in the horizontal; glued and clamped"),
+        "dowel", "Dowel, 32mm system (8mm in 3/4\", 5mm in 1/2\" & 3/8\")", 96, 2, True, False, False,
+        "Face bore in the side, edge bore in the horizontal at 32mm, 96mm, then every 96mm "
+        "from the front; glued and clamped"),
     "confirmat": JoineryMethod(
         "confirmat", "7 x 50mm confirmat screw", 160, 2, False, True, False,
         "7mm through-hole in the side, 5mm pilot into the edge of the horizontal"),
@@ -44,12 +46,57 @@ METHODS: dict[str, JoineryMethod] = {
 }
 
 
+@dataclass(frozen=True)
+class DowelSize:
+    dia_mm: float
+    face_depth: float   # into the side face (inches)
+    edge_depth: float   # into the horizontal's edge (inches)
+    code: str           # hardware code, e.g. "dowel_8x35"
+
+
+def dowel_size(thickness: float) -> DowelSize:
+    """Shop spec: 8mm dowels in 3/4" material, 5mm in 1/2" and 3/8" material.
+    Face bores leave at least 1/8" of material behind them."""
+    if thickness >= 0.70:
+        return DowelSize(8, 0.5, 1.0, "dowel_8x35")
+    if thickness >= 0.45:
+        return DowelSize(5, min(0.375, thickness - 0.125), 0.625, "dowel_5x25")
+    return DowelSize(5, max(thickness - 0.125, 0.1875), 0.625, "dowel_5x20")
+
+
+DOWEL_SPEC_THICKNESSES = (0.75, 0.5, 0.375)
+DOWEL_FIRST_MM, DOWEL_SECOND_MM, DOWEL_PITCH_MM = 32, 96, 96
+DOWEL_REAR_CLEAR_MM = 25   # keep the last dowel this far in front of the joint end
+
+
+def dowel_positions(length: float, offset: float = 0.0) -> list[float]:
+    """32mm from the front, then 96mm (a 64mm interval), then every 96mm.
+
+    On parts too narrow for two dowels under that rule (4" rails and nailers), dowels go
+    32mm in from each end so the joint still gets two.
+    """
+    limit = length / MM - DOWEL_REAR_CLEAR_MM
+    pts = []
+    p = DOWEL_FIRST_MM
+    while p <= limit + 1e-9:
+        pts.append(p)
+        p = DOWEL_SECOND_MM if p == DOWEL_FIRST_MM else p + DOWEL_PITCH_MM
+    if len(pts) < 2 and length / MM >= 2 * DOWEL_FIRST_MM + 8:
+        pts = [DOWEL_FIRST_MM, length / MM - DOWEL_FIRST_MM]
+    if not pts:
+        return [round(offset + length / 2, 4)]
+    return [round(offset + q * MM, 4) for q in pts]
+
+
 def connector_positions(length: float, method: JoineryMethod, offset: float = 0.0) -> list[float]:
     """Positions (inches from the front edge of the joint) on the 32mm grid.
 
     First connector on the 37mm line, then every `pitch`, plus a rear connector on the
-    last grid point that keeps 25mm of material behind it.
+    last grid point that keeps 25mm of material behind it. Dowels use the shop's
+    32 / 96 / every-96mm layout instead (see dowel_positions).
     """
+    if method.key == "dowel":
+        return dowel_positions(length, offset)
     first = 37 * MM
     grid = 32 * MM
     limit = length - 25 * MM
@@ -72,17 +119,20 @@ def connector_positions(length: float, method: JoineryMethod, offset: float = 0.
 
 
 def side_ops(method: JoineryMethod, positions: list[float], y_center: float,
-             side_t: float) -> list[dict]:
-    """Face machining on the side for one joint. x = across the side's depth, y = height."""
+             side_t: float, joint_t: float | None = None) -> list[dict]:
+    """Face machining on the side for one joint. x = across the side's depth, y = height.
+    joint_t is the thinner of the two parts; it sets the dowel size."""
+    ds = dowel_size(min(side_t, joint_t or side_t))
     ops = []
     for i, x in enumerate(positions):
         is_end = i in (0, len(positions) - 1)
         if method.key == "dowel":
-            ops.append(_drill(8, 0.5, x, y_center))
+            ops.append(_drill(ds.dia_mm, ds.face_depth, x, y_center))
         elif method.key == "confirmat":
             ops.append(_drill(7, side_t, x, y_center, through=True))
         elif method.key == "cam_dowel":
-            ops.append(_drill(5, 0.5, x, y_center) if is_end else _drill(8, 0.5, x, y_center))
+            ops.append(_drill(5, 0.5, x, y_center) if is_end
+                       else _drill(ds.dia_mm, ds.face_depth, x, y_center))
         elif method.key == "lamello_clamex":
             ops.append({"op": "pgroove", "system": "P14", "x": x, "y": round(y_center, 4),
                         "orient": "face"})
@@ -90,19 +140,20 @@ def side_ops(method: JoineryMethod, positions: list[float], y_center: float,
 
 
 def horizontal_ops(method: JoineryMethod, positions: list[float], edge: str,
-                   part_length: float) -> list[dict]:
+                   part_length: float, joint_t: float = 0.75) -> list[dict]:
     """Machining on one end of a horizontal part.
 
     edge is "W1" (start of the part length) or "W2" (end). x = across the part width.
     Edge bores are recorded with their edge; face bores (cams, access holes) get a y.
     """
+    ds = dowel_size(joint_t)
     ops = []
     y_face_from_end = 34 * MM
     y_face = y_face_from_end if edge == "W1" else part_length - y_face_from_end
     for i, x in enumerate(positions):
         is_end = i in (0, len(positions) - 1)
         if method.key == "dowel":
-            ops.append(_edge_drill(8, 1.0, x, edge))
+            ops.append(_edge_drill(ds.dia_mm, ds.edge_depth, x, edge))
         elif method.key == "confirmat":
             ops.append(_edge_drill(5, 1.5, x, edge))
         elif method.key == "cam_dowel":
@@ -110,7 +161,7 @@ def horizontal_ops(method: JoineryMethod, positions: list[float], edge: str,
                 ops.append(_edge_drill(8, 34 * MM, x, edge))
                 ops.append({**_drill(15, 13.5 * MM, x, y_face), "role": "cam"})
             else:
-                ops.append(_edge_drill(8, 1.0, x, edge))
+                ops.append(_edge_drill(ds.dia_mm, ds.edge_depth, x, edge))
         elif method.key == "lamello_clamex":
             ops.append({"op": "pgroove", "system": "P14", "x": x, "edge": edge, "orient": "edge"})
             ops.append({**_drill(6, 0.5, x, 9 * MM if edge == "W1" else part_length - 9 * MM),
@@ -118,16 +169,18 @@ def horizontal_ops(method: JoineryMethod, positions: list[float], edge: str,
     return ops
 
 
-def connectors_for(method: JoineryMethod, positions: list[float]) -> dict[str, int]:
+def connectors_for(method: JoineryMethod, positions: list[float],
+                   joint_t: float = 0.75) -> dict[str, int]:
     """Hardware consumed by one joint."""
     n = len(positions)
+    dowel = dowel_size(joint_t).code
     if method.key == "dowel":
-        return {"dowel": n}
+        return {dowel: n}
     if method.key == "confirmat":
         return {"confirmat": n, "confirmat_cap": n}
     if method.key == "cam_dowel":
         cams = min(2, n)
-        return {"cam_bolt_set": cams, "dowel": n - cams}
+        return {"cam_bolt_set": cams, dowel: n - cams}
     if method.key == "lamello_clamex":
         return {"clamex_p14": n}
     raise KeyError(method.key)

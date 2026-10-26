@@ -13,6 +13,10 @@
      "sheet_length": 97, "sheet_width": 49, "sheet_cost": 32.00, "grained": false},
     {"code": "BB-58", "description": "5/8\" Baltic birch (drawer boxes)", "thickness": 0.625,
      "sheet_length": 60, "sheet_width": 60, "sheet_cost": 72.00, "grained": true},
+    {"code": "MEL-WHT-12", "description": "1/2\" white melamine PB", "thickness": 0.5,
+     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 46.00, "grained": false},
+    {"code": "MEL-WHT-38", "description": "3/8\" white melamine", "thickness": 0.375,
+     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 40.00, "grained": false},
     {"code": "PLY-34", "description": "3/4\" hardwood plywood (nailers)", "thickness": 0.75,
      "sheet_length": 96, "sheet_width": 48, "sheet_cost": 62.00, "grained": true},
     {"code": "HPL-WHT", "description": "HPL laminate, white, for pre-lam finished ends", "thickness": 0.039,
@@ -30,7 +34,9 @@
     "leveler": 1.40
   },
   "joinery_hardware": {
-    "dowel": {"description": "8 x 35mm fluted dowel", "unit_cost": 0.03},
+    "dowel_8x35": {"description": "8 x 35mm fluted dowel (3/4\" material)", "unit_cost": 0.03},
+    "dowel_5x25": {"description": "5 x 25mm fluted dowel (1/2\" material)", "unit_cost": 0.02},
+    "dowel_5x20": {"description": "5 x 20mm fluted dowel (3/8\" material)", "unit_cost": 0.02},
     "confirmat": {"description": "7 x 50mm confirmat screw", "unit_cost": 0.07},
     "confirmat_cap": {"description": "Confirmat cover cap", "unit_cost": 0.02},
     "cam_bolt_set": {"description": "15mm cam + connecting bolt set", "unit_cost": 0.45},

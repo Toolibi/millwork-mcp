@@ -12,7 +12,7 @@ the part width (front edge at x=0) and y runs along its length.
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 
 from .joinery import METHODS, connector_positions, connectors_for, horizontal_ops, side_ops
@@ -156,43 +156,58 @@ def _nailers(cab: Cabinet, std: ConstructionStandard) -> list[Nailer]:
     return [Nailer("Nailer Top", H - t - std.nailer_w), Nailer("Nailer Bottom", t)]
 
 
-def _nailer_side_ops(method, cab: Cabinet, std: ConstructionStandard, n: Nailer) -> list[dict]:
+def _nailer_side_ops(method, cab: Cabinet, std: ConstructionStandard, n: Nailer,
+                     nailer_t: float) -> list[dict]:
     x = cab.depth - std.nailer_t / 2          # centre of the nailer thickness
     ops = []
     for pos in connector_positions(std.nailer_w, method):
-        for o in side_ops(method, [x], n.y0 + pos, std.case_t):
+        for o in side_ops(method, [x], n.y0 + pos, std.case_t, nailer_t):
             if o["op"] == "pgroove":
                 o["orient"] = "face_v"      # groove runs up the side for an on-edge part
             ops.append(o)
     return ops
 
 
-def cabinet_connectors(cab: Cabinet, job: Job, std: ConstructionStandard | None = None) -> Counter:
+def _case_setup(cab: Cabinet, job: Job, std: ConstructionStandard,
+                materials: dict[str, Material] | None):
+    """Case/back material for this cabinet, and the standard with the case thickness
+    taken from the actual material (so 1/2" casework gets 1/2" geometry and 5mm dowels)."""
+    is_open = cab.type in OPEN_TYPES
+    case_mat = job.exposed_material if (is_open and job.exposed_material) else job.case_material
+    back_mat = (job.exposed_back_material or job.back_material) if is_open else job.back_material
+    if materials and case_mat in materials:
+        std = replace(std, case_t=materials[case_mat].thickness)
+    nailer_t = (materials[job.nailer_material].thickness
+                if materials and job.nailer_material in materials else std.nailer_t)
+    return std, case_mat, back_mat, nailer_t
+
+
+def cabinet_connectors(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
+                       materials: dict[str, Material] | None = None) -> Counter:
     """Case connectors for one cabinet (times its qty)."""
-    std = std or ConstructionStandard()
+    std, _, _, nailer_t = _case_setup(cab, job, std or ConstructionStandard(), materials)
     method = METHODS[cab.joinery or job.joinery]
     total: Counter = Counter()
     for h in _horizontals(cab, std):
         pos = connector_positions(h.joint_depth, method)
-        per_joint = connectors_for(method, pos)
+        per_joint = connectors_for(method, pos, std.case_t)
         for k, v in per_joint.items():
             total[k] += v * 2 * h.qty * cab.qty   # two ends per horizontal
     for _ in _nailers(cab, std):
-        for k, v in connectors_for(method, connector_positions(std.nailer_w, method)).items():
+        jt = min(std.case_t, nailer_t)
+        for k, v in connectors_for(method, connector_positions(std.nailer_w, method), jt).items():
             total[k] += v * 2 * cab.qty
     return total
 
 
 def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
                 materials: dict[str, Material] | None = None) -> list[Part]:
-    std = std or ConstructionStandard()
+    std, case_mat, back_mat, nailer_t = _case_setup(cab, job, std or ConstructionStandard(), materials)
     method = METHODS[cab.joinery or job.joinery]
     t = std.case_t
     W, H, D, q = cab.width, cab.height, cab.depth, cab.qty
     inside_w = W - 2 * t
     is_open = cab.type in OPEN_TYPES
-    case_mat = job.exposed_material if (is_open and job.exposed_material) else job.case_material
-    back_mat = (job.exposed_back_material or job.back_material) if is_open else job.back_material
     front_only = {"L1": True}
     parts: list[Part] = []
     horizontals = _horizontals(cab, std)
@@ -205,7 +220,7 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
             side_mach += side_ops(method, connector_positions(h.joint_depth, method, off), y, t)
     nailers = _nailers(cab, std)
     for n in nailers:
-        side_mach += _nailer_side_ops(method, cab, std, n)
+        side_mach += _nailer_side_ops(method, cab, std, n, nailer_t)
     if cab.adj_shelves:
         start = t + 3.0
         if cab.type == "microwave":   # adjustable shelves only above the fixed shelf
@@ -238,8 +253,8 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
     # --- horizontals: grain runs side to side (length = inside width) ---
     for h in horizontals:
         pos = connector_positions(h.joint_depth, method)
-        mach = (horizontal_ops(method, pos, "W1", inside_w)
-                + horizontal_ops(method, pos, "W2", inside_w))
+        mach = (horizontal_ops(method, pos, "W1", inside_w, t)
+                + horizontal_ops(method, pos, "W2", inside_w, t))
         eb = dict(front_only) if h.eb_front else {}
         parts.append(Part(cab.tag, h.name, case_mat, inside_w, h.depth, h.qty * q, eb, mach,
                           exposed=is_open or h.exposed))
@@ -255,8 +270,9 @@ def build_parts(cab: Cabinet, job: Job, std: ConstructionStandard | None = None,
     # --- hanging nailers: 3/4" ply, 4" wide x the length between the sides ---
     for n in nailers:
         pos = connector_positions(std.nailer_w, method)
-        mach = (horizontal_ops(method, pos, "W1", inside_w)
-                + horizontal_ops(method, pos, "W2", inside_w))
+        jt = min(t, nailer_t)
+        mach = (horizontal_ops(method, pos, "W1", inside_w, jt)
+                + horizontal_ops(method, pos, "W2", inside_w, jt))
         parts.append(Part(cab.tag, n.name, job.nailer_material, inside_w, std.nailer_w, q,
                           {}, mach))
 
@@ -393,6 +409,18 @@ def review_job(job: Job, materials: dict[str, Material] | None = None) -> list[s
         flags.append("Finished ends are specified as pre-lam but no laminate is set "
                      "(finished_end_laminate) - finished sides will be plain case material")
     if materials:
+        from .joinery import DOWEL_SPEC_THICKNESSES
+        for c in job.cabinets:
+            if (c.joinery or job.joinery) not in ("dowel", "cam_dowel"):
+                continue
+            _, cm, _, _ = _case_setup(c, job, ConstructionStandard(), materials)
+            th = materials[cm].thickness if cm in materials else None
+            if th is not None and th < 0.375 - 1e-6:
+                flags.append(f"{c.tag}: {cm} is {th}\" - too thin to dowel; use a different joint")
+            elif th is not None and all(abs(th - x) > 1e-3 for x in DOWEL_SPEC_THICKNESSES):
+                size = "8mm" if th >= 0.70 else "5mm"
+                flags.append(f"{c.tag}: {cm} is {th}\" - outside the dowel spec (3/4\" = 8mm, "
+                             f"1/2\" and 3/8\" = 5mm); using {size}, confirm")
         nm = materials.get(job.nailer_material)
         if nm and abs(nm.thickness - ConstructionStandard().back_setback) > 1e-3:
             flags.append(f"Nailer material {nm.code} is {nm.thickness}\" thick but the back setback "

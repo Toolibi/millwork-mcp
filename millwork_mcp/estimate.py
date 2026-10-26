@@ -70,7 +70,7 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     levelers = sum(4 * c.qty for c in job.cabinets if c.type in ("base", "drawer_base", "sink_base", "tall"))
     connectors: Counter = Counter()
     for c in job.cabinets:
-        connectors.update(cabinet_connectors(c, job, std))
+        connectors.update(cabinet_connectors(c, job, std, mats))
     jhw = pricing["joinery_hardware"]
     hardware_lines = [
         {"item": "Hinge (clip-top, soft close)", "qty": hinges, "unit": hw["hinge"]},

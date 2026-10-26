@@ -135,6 +135,8 @@ MM = 1 / 25.4
 
 def test_connector_positions_sit_on_the_32mm_grid():
     for key, m in METHODS.items():
+        if key == "dowel":
+            continue   # dowels follow the shop's own 32/96/96 layout, tested below
         pos = connector_positions(24, m)
         assert pos[0] == pytest.approx(37 * MM, abs=1e-3), key
         for p in pos:
@@ -158,7 +160,7 @@ def test_dowel_cabinet_bores_both_parts():
     assert len(edge_dowels) == 2 * n_bottom                    # both ends of the bottom
     assert all(o["y"] == pytest.approx(0.375) for o in side_dowels[:n_bottom])
     count = cabinet_connectors(cab, job_with(cab))
-    assert count["dowel"] == 2 * (n_bottom + 2 * n_stretch + 2 * n_nailer)
+    assert count["dowel_8x35"] == 2 * (n_bottom + 2 * n_stretch + 2 * n_nailer)
 
 
 def test_confirmat_uses_through_holes_and_caps():
@@ -176,7 +178,7 @@ def test_cam_dowel_puts_cams_at_the_ends_and_dowels_between():
     assert len(cams) == 4 and all(o["dia_mm"] == 15 for o in cams)   # 2 per end
     c = cabinet_connectors(cab, job_with(cab))
     # (2 horizontals + 2 nailers) x 2 ends x 2 cams
-    assert c["cam_bolt_set"] == 4 * 2 * 2 and c["dowel"] > 0
+    assert c["cam_bolt_set"] == 4 * 2 * 2 and c["dowel_8x35"] > 0
 
 
 def test_clamex_cuts_p_grooves_and_access_holes():
@@ -396,3 +398,67 @@ def test_sample_estimate_charges_prelam_and_laminate():
     assert est["prelam_panels"] == 1 + 2 + 1     # B1 L, W2 L x2, T1 R
     assert any(m["material"] == "HPL-WHT" for m in est["materials"])
     assert any(m["material"] == "PLY-34" for m in est["materials"])
+
+
+
+# ---------------------------------------------------------------- dowel spec
+from millwork_mcp.joinery import dowel_positions, dowel_size
+
+
+def mm(pos):
+    return [round(p / MM, 1) for p in pos]
+
+
+def test_dowel_layout_32_then_96_then_every_96():
+    # 24" deep bottom, joint zone ends at the back dado (23")
+    assert mm(dowel_positions(23.0)) == [32, 96, 192, 288, 384, 480]
+    # 12" wall cabinet bottom (joint zone 11")
+    assert mm(dowel_positions(11.0)) == [32, 96, 192]
+    gaps = [b - a for a, b in zip(mm(dowel_positions(23.0)), mm(dowel_positions(23.0))[1:])]
+    assert gaps[0] == 64 and all(g == 96 for g in gaps[1:])
+
+
+def test_narrow_rails_and_nailers_still_get_two_dowels():
+    pos = mm(dowel_positions(4.0))
+    assert len(pos) == 2 and pos[0] == 32 and pos[1] == pytest.approx(4 * 25.4 - 32, abs=0.1)
+
+
+def test_dowel_diameter_follows_material_thickness():
+    assert dowel_size(0.75).dia_mm == 8
+    assert dowel_size(0.5).dia_mm == 5
+    assert dowel_size(0.375).dia_mm == 5
+    for t in (0.75, 0.5, 0.375):
+        assert dowel_size(t).face_depth <= t - 0.125     # never blows through the side
+
+
+def test_half_inch_casework_uses_5mm_dowels_and_half_inch_geometry():
+    cab = Cabinet("W1", "wall", 30, 30, 12, doors=2)
+    job = job_with(cab)
+    job.case_material = "MEL-WHT-12"
+    parts = build_parts(cab, job, materials=MATS)
+    side, bottom = find(parts, "Side"), find(parts, "Bottom")
+    joint_bores = [o for o in side.machining if o["op"] == "drill" and o.get("role") != "shelf_pin"]
+    assert joint_bores and {o["dia_mm"] for o in joint_bores} == {5}
+    assert all(o["depth"] <= 0.5 - 0.125 for o in joint_bores)
+    assert {o["dia_mm"] for o in bottom.machining if o["op"] == "edge_drill"} == {5}
+    assert bottom.length == pytest.approx(30 - 2 * 0.5)        # inside width from 1/2" sides
+    assert min(o["y"] for o in joint_bores) == pytest.approx(0.25)  # bottom centre line at t/2
+    c = cabinet_connectors(cab, job, materials=MATS)
+    # nailers are 3/4" ply but join 1/2" sides, so the thinner part sets 5mm
+    assert c["dowel_5x25"] > 0 and "dowel_8x35" not in c
+
+
+def test_three_quarter_casework_uses_8mm_dowels():
+    cab = Cabinet("B1", "base", 30, 34.5, 24, doors=2)
+    parts = build_parts(cab, job_with(cab), materials=MATS)
+    joint_bores = [o for o in find(parts, "Side").machining
+                   if o["op"] == "drill" and o.get("role") != "shelf_pin"]
+    assert {o["dia_mm"] for o in joint_bores} == {8}
+    bottom_row = sorted(o["x"] for o in joint_bores if o["y"] < 1)
+    assert mm(bottom_row) == [32, 96, 192, 288, 384, 480]
+
+
+def test_off_spec_thickness_is_flagged():
+    job = job_with(Cabinet("B1", "base", 18, 34.5, 24, doors=1))
+    job.case_material = "BB-58"      # 5/8" is not in the dowel spec
+    assert "outside the dowel spec" in " ".join(review_job(job, MATS))

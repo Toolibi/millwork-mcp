@@ -41,11 +41,15 @@ Human review → CAM (S2M Center) → machine
 - **Base cabinet tops:** two 4" rails. The front rail is edgebanded to match the cabinet front; the rear rail is not banded.
 - **Finished ends:** pre-laminated before machining. Laminate is pressed onto an oversize core blank (1/2" per edge), trimmed on the saw, and then bored on the CNC, so every hole goes through a finished face. The saw list nests the core blank and the laminate separately, the route reads `prelam > saw > CNC`, and the estimate adds press time per panel. Set `finished_end_method: exposed_material` to use veneer ply instead.
 
-**Case joinery, laid out on the 32mm system.** Every joint starts on the 37mm system line and steps on the 32mm grid, so the same drill block that bores shelf-pin rows bores the joints. Joinery can be set per job and overridden per cabinet.
+**Case joinery, laid out on the 32mm system.** Joinery can be set per job and overridden per cabinet.
+
+- **Dowel spec:** 8mm dowels in 3/4" material, 5mm in 1/2" and 3/8". The thinner of the two parts sets the size, and face bores always leave 1/8" of material behind them. Layout from the front edge is 32mm, then 96mm (a 64mm interval), then every 96mm to the back, so every dowel lands on the 32mm grid. Narrow parts such as 4" rails and nailers get a dowel 32mm in from each end so they still have two.
+- **Other connectors** start on the 37mm system line and step on the 32mm grid.
+- Case thickness comes from the actual material, so 1/2" casework gets 1/2" geometry and 5mm dowels automatically. Thicknesses outside the dowel spec are flagged.
 
 | Method | Side (gable) | Horizontal (bottom, top, stretcher, fixed shelf) | Notes |
 |---|---|---|---|
-| `dowel` | 8mm face bores | 8mm edge bores | Glued; full assembly time |
+| `dowel` | 8mm (3/4") or 5mm (1/2", 3/8") face bores at 32 / 96 / every 96mm | Matching edge bores | Glued; full assembly time |
 | `confirmat` | 7mm through-holes | 5mm edge pilots | Fastest assembly; flagged on finished or open cabinets because the heads show |
 | `cam_dowel` | 5mm bolt bores at front/rear, 8mm dowels between | 15mm cam face bores + 8mm edge bores | Knock-down, ships flat |
 | `lamello_clamex` | P-System face grooves | P-System edge grooves + 6mm access holes | Invisible knock-down |
@@ -80,7 +84,7 @@ Connector counts flow into the hardware list, and each method has its own assemb
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                 # 35 tests: construction spec, joinery, grain match, CNC routing, nesting, estimate, DXF
+python -m pytest -q                 # 41 tests: dowel spec, construction spec, joinery, grain match, CNC routing, nesting, estimate, DXF
 python -m millwork_mcp.cli examples/sample_kitchen.json
 python -m millwork_mcp.cli examples/white_oak_kitchen.json
 ```
