@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Prince Boafo. All rights reserved.
+# Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE).
+# Commercial use requires a separate license from the author - see COMMERCIAL.md.
+
 """Exports: per-part DXF files with machining layers, cut-list CSV, and saw list CSV.
 
 DXF layers carry the machining intent (operation, tool size, depth) in their names, the
@@ -68,6 +72,7 @@ def _safe(name: str) -> str:
 def part_to_dxf(part: Part, material: Material, path: Path) -> Path:
     doc = ezdxf.new("R2010", setup=True)
     doc.units = ezdxf.units.IN
+    doc.header["$LASTSAVEDBY"] = "millwork-mcp (c) Prince Boafo"
     msp = doc.modelspace()
     L, W = part.length, part.width   # x = width, y = length (grain vertical)
 

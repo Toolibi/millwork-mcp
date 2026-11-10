@@ -4,3 +4,14 @@ __pycache__/
 .pytest_cache/
 .venv/
 .env
+
+# Shop-private data: real prices, customer jobs, machine programs. Never commit these.
+shop/
+customer_jobs/
+*.private.json
+pricing.local.json
+*.mpr
+*.mprx
+.env*
+*.key
+*.pem

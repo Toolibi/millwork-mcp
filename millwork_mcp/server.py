@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Prince Boafo. All rights reserved.
+# Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE).
+# Commercial use requires a separate license from the author - see COMMERCIAL.md.
+
 """millwork-mcp: an MCP server that gives an AI assistant real millwork tools.
 
 The model reads drawings and builds the cabinet list; these tools do everything that
@@ -27,7 +31,11 @@ ROOT = Path(__file__).resolve().parent.parent
 PRICING_PATH = Path(os.environ.get("MILLWORK_PRICING", ROOT / "examples" / "pricing.json"))
 OUTPUT_ROOT = Path(os.environ.get("MILLWORK_OUTPUT", ROOT / "output"))
 
-mcp = FastMCP("millwork")
+NOTICE = ("millwork-mcp (c) 2026 Prince Boafo. Source-available under the PolyForm "
+          "Noncommercial License 1.0.0; commercial use requires a license from the author "
+          "(see COMMERCIAL.md).")
+
+mcp = FastMCP("millwork", instructions=NOTICE)
 
 @mcp.tool()
 def review_cabinet_schedule(job: dict) -> dict:
@@ -118,7 +126,7 @@ def estimate_and_export(job: dict) -> dict:
     opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
     """
     out = OUTPUT_ROOT / job["job_number"]
-    return run_job(job, load_pricing(PRICING_PATH), out)
+    return {**run_job(job, load_pricing(PRICING_PATH), out), "license": NOTICE}
 
 
 @mcp.tool()

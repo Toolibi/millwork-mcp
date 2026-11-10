@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Prince Boafo. All rights reserved.
+# Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE).
+# Commercial use requires a separate license from the author - see COMMERCIAL.md.
+
 """Guillotine panel-saw optimizer (two-stage rip / crosscut).
 
 A beam/panel saw rips a sheet into strips along its length, then crosscuts each strip

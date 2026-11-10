@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Prince Boafo. All rights reserved.
+# Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE).
+# Commercial use requires a separate license from the author - see COMMERCIAL.md.
+
 """True-shape-free rectangular nesting for a nested-based CNC router.
 
 A nested router cuts parts straight out of the full sheet, so there is no guillotine

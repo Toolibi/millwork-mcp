@@ -1,3 +1,4 @@
+-- Copyright (c) 2026 Prince Boafo. All rights reserved. PolyForm Noncommercial 1.0.0.
 -- applied to Supabase project millwork-mcp on 2026-10-26
 -- Machine profiles: how the shop cuts and bores parts. Every setting carries its source.
 create table public.machine_profiles (

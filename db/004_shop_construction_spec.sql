@@ -1,3 +1,4 @@
+-- Copyright (c) 2026 Prince Boafo. All rights reserved. PolyForm Noncommercial 1.0.0.
 -- applied to Supabase project millwork-mcp on 2026-10-26
 insert into public.materials (code, description, thickness, sheet_length, sheet_width, sheet_cost, grained) values
  ('PLY-34','3/4" hardwood plywood (nailers)',0.75,96,48,62.00,true),

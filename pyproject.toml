@@ -1,0 +1,12 @@
+[project]
+name = "millwork-mcp"
+version = "0.5.0"
+description = "MCP server that gives AI real cabinet-shop tools: takeoffs, estimating, 32mm joinery, grain matching, nested-router nesting and woodWOP-ready DXF output."
+authors = [{ name = "Prince Boafo" }]
+license = { text = "PolyForm-Noncommercial-1.0.0" }
+requires-python = ">=3.10"
+dependencies = ["ezdxf>=1.3", "mcp>=1.0,<2"]
+classifiers = ["License :: Other/Proprietary License", "Private :: Do Not Upload"]
+
+[tool.setuptools]
+packages = ["millwork_mcp"]

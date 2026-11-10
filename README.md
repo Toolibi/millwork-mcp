@@ -1,5 +1,7 @@
 # millwork-mcp
 
+> **Source-available, not open source.** Copyright (c) 2026 Prince Boafo. Free to read, evaluate, and use for personal, educational, and research purposes under the [PolyForm Noncommercial License 1.0.0](LICENSE). **Any business use, resale, hosting, or reuse in another product requires a commercial license.** See [COMMERCIAL.md](COMMERCIAL.md).
+
 **An MCP server that gives an AI assistant real cabinet-shop tools: drawing review, takeoffs, estimating, panel-saw nesting, and CNC-ready DXF output.**
 
 Built by a 20-year cabinet/millwork and CNC programmer to show how AI gets deployed into a non-software industry the right way: the model reads drawings and talks to people; deterministic code does everything that has to be exact.
@@ -168,3 +170,10 @@ Machining intent is encoded in layer names (placeholders, match them to your CAM
 ## Scope note
 
 Sample prices and construction rules are illustrative. Verify every output against your own shop standards and CAM simulation before cutting material.
+
+
+## License
+
+Copyright (c) 2026 Prince Boafo. All rights reserved.
+
+millwork-mcp is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may use it for noncommercial purposes. Commercial use (running it in a business, quoting or producing work for paying customers, reselling or hosting it, or building it into another product) requires a written license from the author. See [COMMERCIAL.md](COMMERCIAL.md).

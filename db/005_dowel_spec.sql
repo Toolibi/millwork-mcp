@@ -1,3 +1,4 @@
+-- Copyright (c) 2026 Prince Boafo. All rights reserved. PolyForm Noncommercial 1.0.0.
 -- applied to Supabase project millwork-mcp on 2026-10-26
 -- Shop dowel spec: 8mm in 3/4", 5mm in 1/2" and 3/8"; 32mm, 96mm, then every 96mm
 create table public.dowel_spec (

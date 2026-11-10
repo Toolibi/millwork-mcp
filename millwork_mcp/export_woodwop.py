@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Prince Boafo. All rights reserved.
+# Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE).
+# Commercial use requires a separate license from the author - see COMMERCIAL.md.
+
 """Nested-sheet exports for a HOMAG / woodWOP nested-based router.
 
 One DXF per sheet, in millimetres, using the layer names woodWOP's DXF import reads
@@ -84,6 +88,7 @@ def export_sheet_dxf(sheet: RouterSheet, material: Material, machine: MachinePro
     ops = sheet_ops(sheet, machine, t)
     doc = ezdxf.new("R2010", setup=True)
     doc.units = ezdxf.units.MM
+    doc.header["$LASTSAVEDBY"] = "millwork-mcp (c) Prince Boafo"
     msp = doc.modelspace()
 
     def layer(name: str, color: int) -> str:
