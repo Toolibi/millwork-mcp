@@ -22,17 +22,18 @@ Estimating alone typically takes hours per kitchen, and every re-key is a chance
 Drawings (PDF / DWG)
       │  AI reads & extracts the cabinet schedule (vision + AutoCAD MCP)
       ▼
-review_cabinet_schedule ── flags bad sizes, duplicate tags, oversized doors
+review_cabinet_schedule ── flags bad sizes, duplicate tags, oversized doors,
+                           material codes not in the price list
       ▼
 build_cutlist ─────────── construction standard → every part, edgebanding, machining
       ▼
-nest_panel_saw ────────── two-stage guillotine optimizer → sheets, yield, rip/crosscut list
+nest_sheets ───────────── router nest (MaxRects) or panel-saw guillotine → sheets, yield
       ▼
 estimate_and_export ───── materials from the real nest + hardware + labor + markup
                            → estimate.json, cutlist.csv, saw_list.csv,
                              per-part DXFs with machining layers, nest diagrams
       ▼
-Human review → CAM (S2M Center) → machine
+Human review → woodWOP / CAM simulation → machine
 ```
 
 ### Machines: nested router (default) or panel saw
