@@ -16,7 +16,7 @@ estimate, cut list, nest summary returned to the agent
 
 - **Auth:** one shared key, sent as `Authorization: Bearer <key>` (or `x-api-key`). It's stored as a Container Apps secret and a Foundry project connection, never in code. Keys are compared in constant time. The server refuses to start without a key of 32+ characters. Two comma-separated keys are accepted at once, so the key can be rotated with no downtime.
 - **Network:** HTTPS only, host header pinned to the app's own hostname, 1 MB request cap, and `/healthz` as the only open route. The container runs as an unprivileged user.
-- **Cost:** scales to zero when idle. The image is built in Azure (Container Registry Basic is the only standing cost, a few dollars a month). Delete everything with `az group delete -n millwork-rg`.
+- **Cost:** scales to zero when idle. On Container Apps the image is built in Azure, and Container Registry Basic is the only standing cost at a few dollars a month. On App Service F1 it is free, with a daily CPU quota. Delete everything with `az group delete -n millwork-rg`.
 
 ## 1. Deploy (Azure Cloud Shell, about 10 minutes)
 
@@ -24,9 +24,11 @@ estimate, cut list, nest summary returned to the agent
 2. Get the code into Cloud Shell, either way:
    - **Upload:** Cloud Shell → *Manage files* → *Upload* → `millwork-mcp.zip`, then `unzip millwork-mcp.zip && cd millwork-mcp`
    - **Git:** `git clone https://github.com/Toolibi/millwork-mcp && cd millwork-mcp`
-3. Run `bash deploy/azure_deploy.sh`
+3. Run one of the deploy scripts:
+   - **Free trial or free tier:** `bash deploy/azure_appservice.sh`. This deploys to App Service. Free-trial subscriptions block ACR Tasks (`TasksOperationsNotAllowed`), so the container build fails there. App Service builds the Python code itself, and the script picks a region that has free F1 quota.
+   - **Pay-as-you-go:** `bash deploy/azure_deploy.sh`. This deploys to Container Apps, which builds the image in ACR and scales to zero.
 
-The script prints the MCP server URL and saves the API key to `~/millwork-mcp-api-key.txt`. It never prints the key.
+Either script prints the MCP server URL and saves the API key to `~/millwork-mcp-api-key.txt`. It never prints the key.
 
 ## 2. Connect a Foundry agent
 
