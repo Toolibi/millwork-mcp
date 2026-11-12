@@ -430,6 +430,16 @@ def review_job(job: Job, materials: dict[str, Material] | None = None) -> list[s
                      "(finished_end_laminate) - finished sides fall back to the exposed material, "
                      "or plain case material if none is set")
     if materials:
+        # Unknown codes make the estimate price nothing and nest on the wrong sheet - the most
+        # common mistake when an AI agent fills in a schedule from a drawing.
+        known = ", ".join(sorted(materials))
+        for field in ("case_material", "door_material", "exposed_material",
+                      "exposed_back_material", "nailer_material", "finished_end_laminate"):
+            code = getattr(job, field, "") or ""
+            if code and code not in materials:
+                flags.append(f"Unknown {field} '{code}' - not in the price list; use one of: {known}")
+        if any(f.startswith("Unknown ") and "price list" in f for f in flags):
+            return flags
         from .joinery import DOWEL_SPEC_THICKNESSES
         for c in job.cabinets:
             if (c.joinery or job.joinery) not in ("dowel", "cam_dowel"):

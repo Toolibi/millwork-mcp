@@ -606,3 +606,17 @@ def test_nested_routes_and_unverified_flag():
     est = estimate_job(job_from_dict(SAMPLE), PRICING, machine=NESTED)
     assert "router_hours" in est["labor"] and "saw_hours" not in est["labor"]
     assert any("UNVERIFIED" in f for f in est["review_flags"])
+
+
+def test_review_flags_material_codes_not_in_price_list():
+    # An agent reading a drawing tends to invent codes like "RIFT-WHT-OAK" - catch it at review.
+    job = dict(json.loads((ROOT / "examples" / "white_oak_kitchen.json").read_text()))
+    job["door_material"] = "RIFT-WHT-OAK"
+    job["nailer_material"] = "PLY-3/4"
+    flags = review_job(job_from_dict(job), materials_from_pricing(PRICING))
+    assert any("door_material 'RIFT-WHT-OAK'" in f and "WO-RIFT-34" in f for f in flags)
+    assert any("nailer_material 'PLY-3/4'" in f for f in flags)
+    # the shipped example uses valid codes and raises no material flag
+    ok = review_job(job_from_dict(json.loads((ROOT / "examples" / "white_oak_kitchen.json").read_text())),
+                    materials_from_pricing(PRICING))
+    assert not any("not in the price list" in f for f in ok)

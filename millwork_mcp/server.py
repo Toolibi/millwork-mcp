@@ -41,7 +41,9 @@ mcp = FastMCP("millwork", instructions=NOTICE)
 @mcp.tool()
 def review_cabinet_schedule(job: dict) -> dict:
     """Check a cabinet schedule extracted from drawings for likely errors before estimating.
-    Returns review flags (duplicate tags, odd sizes, oversized doors, sink-base drawers...).
+    Returns review flags (duplicate tags, odd sizes, oversized doors, sink-base drawers,
+    material codes not in the price list...). Take material codes from get_pricing; never
+    invent them.
     Job format (inches): {job_number, name, case_material, door_material, exposed_material,
     joinery: dowel|confirmat|cam_dowel|lamello_clamex, front_grain: vertical|horizontal,
     grain_match: bool, finished_end_method: prelam|exposed_material, finished_end_laminate,
