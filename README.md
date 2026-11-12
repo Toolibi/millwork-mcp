@@ -36,6 +36,11 @@ estimate_and_export ───── materials from the real nest + hardware + la
                            → estimate.json, cutlist.csv, saw_list.csv,
                              per-part DXFs with machining layers, nest diagrams
       ▼
+check_job_materials ───── stock vs. what the job needs (sheets, edgebanding, hardware),
+                           offcuts that replace full sheets, cost of the shortage
+      ▼
+reserve → cut → consume ─ stock set aside, taken off when cut, new offcuts racked
+      ▼
 Human review → woodWOP / CAM simulation → machine
 ```
 
@@ -148,6 +153,19 @@ Then: *"Here's the kitchen elevation PDF. Extract the cabinet schedule, review i
 | `estimate_and_export` | Full estimate plus all shop files |
 | `list_joinery_methods` | Describes each joinery method so the AI can recommend one |
 | `get_pricing` | Returns the pricing table so the AI can explain the number |
+| `compare_sheet_sizes` | Same parts on every sheet size and core the supplier sells, with the cheapest option |
+| `inventory_status` | On hand, reserved, available, reorder status, stock value, offcuts on the rack |
+| `check_job_materials` | What a job takes from stock, what's short, and which offcuts replace full sheets |
+| `purchase_list` | Draft order: shortages for reserved jobs plus items at their reorder point, in pack sizes |
+| `reserve_job_materials` | Sets stock and offcuts aside for a released job *(changes stock)* |
+| `consume_job_materials` | Job cut: takes its stock off on-hand, removes used offcuts, racks new ones *(changes stock)* |
+| `release_job_materials` | Cancels a reservation *(changes stock)* |
+| `receive_stock` / `count_stock` | Deliveries and physical counts, with reorder points *(changes stock)* |
+| `log_remnant` | Adds or removes an offcut on the remnant rack *(changes stock)* |
+
+### Inventory control
+
+Stock needs come from the same nest and hardware count as the estimate, so the quote, the shop files and the stock never disagree. Available = on hand − reserved; a negative number is a shortage and lands on the purchase list. Offcuts at least 12" on a side are racked by size and location, and the next job's check tries its loose parts on them first. Grain-matched fronts always come from full sheets, and a remnant is only used when it saves a full sheet. Every change is written atomically under a file lock with an audit log. In hosted mode, `MILLWORK_INVENTORY` points at persistent storage (`/home/data/inventory.json` on App Service). `examples/inventory.json` is sample stock, so replace it with a real count before relying on it.
 
 ## DXF layer convention
 
@@ -172,6 +190,7 @@ Machining intent is encoded in layer names (placeholders, match them to your CAM
 - [ ] **Phase 2:** drawing ingestion (PDF elevations via vision; DWG via Autodesk's AutoCAD MCP server), pricing in Supabase
 - [x] Nested-router nesting and woodWOP per-sheet DXFs (unverified until run on the machine)
 - [ ] woodWOP `.mpr` programs templated from a real program off the shop's machine
+- [x] Inventory control: stock, job reservations, offcuts, reorder points, purchase list
 - [ ] **Phase 3:** Cabinet Vision / S2M import round-trip, web demo on Vercel
 - [ ] Accuracy study: AI-assisted vs manual estimates on real jobs (time saved, % variance)
 

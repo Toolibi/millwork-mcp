@@ -28,10 +28,14 @@ from .machine import machine_from_pricing
 from .pipeline import job_from_dict, run_job
 from .router_nest import nest_job_router
 from .sheet_options import compare_sheet_options
+from . import inventory as inv_mod
 
 ROOT = Path(__file__).resolve().parent.parent
 PRICING_PATH = Path(os.environ.get("MILLWORK_PRICING", ROOT / "examples" / "pricing.json"))
 OUTPUT_ROOT = Path(os.environ.get("MILLWORK_OUTPUT", ROOT / "output"))
+INVENTORY = inv_mod.InventoryStore(
+    os.environ.get("MILLWORK_INVENTORY", ROOT / "data" / "inventory.json"),
+    seed=ROOT / "examples" / "inventory.json")
 
 NOTICE = ("millwork-mcp (c) 2026 Prince Boafo. Source-available under the PolyForm "
           "Noncommercial License 1.0.0; commercial use requires a license from the author "
@@ -168,6 +172,113 @@ def list_joinery_methods() -> dict:
 def get_pricing() -> dict:
     """Return the pricing table in use so the assistant can explain an estimate."""
     return load_pricing(PRICING_PATH)
+
+
+# ---------------------------------------------------------------- inventory control
+# Read-only: inventory_status, check_job_materials, purchase_list.
+# Change stock (require approval in the agent): everything else.
+
+@mcp.tool()
+def inventory_status(code: str = "", low_only: bool = False) -> dict:
+    """Stock on hand, reserved for released jobs, and available, for sheet goods
+    (material codes), edgebanding (EB-<material code>, in lineal feet) and hardware (HW-...),
+    with locations, stock value, offcuts (remnants) on the rack and open job reservations.
+    Give one code to see just that item; low_only=true lists only items that are SHORT or at
+    their reorder point. Read-only."""
+    p = load_pricing(PRICING_PATH)
+    return inv_mod.status(INVENTORY.read(), p, code.strip(), low_only)
+
+
+@mcp.tool()
+def check_job_materials(job: dict, use_remnants: bool = True) -> dict:
+    """Before releasing a job to the shop: what it takes from stock (sheets from the actual
+    nest, edgebanding per material, hardware counted from the construction), what is short,
+    the cost to buy the shortage, and which offcuts on the rack can replace full sheets.
+    Same job format as review_cabinet_schedule. Read-only."""
+    p = load_pricing(PRICING_PATH)
+    return inv_mod.job_needs(job_from_dict(job), p, INVENTORY.read(), use_remnants)
+
+
+@mcp.tool()
+def purchase_list() -> dict:
+    """Draft order: shortages for reserved jobs plus items at their reorder point, rounded
+    up to pack size (edgebanding rolls, hardware boxes), with costs. A draft for a person to
+    send - this tool orders nothing. Read-only."""
+    return inv_mod.purchase_list(INVENTORY.read(), load_pricing(PRICING_PATH))
+
+
+@mcp.tool()
+def reserve_job_materials(job: dict, use_remnants: bool = True) -> dict:
+    """Set stock aside for a job released to the shop (sheets, edgebanding, hardware and the
+    offcuts the plan uses). Re-running for the same job_number replaces its reservation.
+    Shortages stay visible as negative available and show up on purchase_list. CHANGES STOCK
+    - confirm with the user first."""
+    p = load_pricing(PRICING_PATH)
+    with INVENTORY.transaction() as inv:
+        return inv_mod.reserve(inv, p, job_from_dict(job), use_remnants)
+
+
+@mcp.tool()
+def consume_job_materials(job_number: str, remnants_left: list[dict] = [],  # noqa: B006
+                          note: str = "") -> dict:
+    """The job has been cut: take its reserved quantities off on-hand and remove the offcuts
+    it used. remnants_left logs offcuts worth keeping, each {material, length, width,
+    location} in inches, length along the grain, 12" minimum. CHANGES STOCK - confirm with
+    the user first."""
+    p = load_pricing(PRICING_PATH)
+    with INVENTORY.transaction() as inv:
+        return inv_mod.consume(inv, job_number, list(remnants_left or []), p, note)
+
+
+@mcp.tool()
+def release_job_materials(job_number: str) -> dict:
+    """Cancel a job's reservation and put the stock back to available. CHANGES STOCK -
+    confirm with the user first."""
+    with INVENTORY.transaction() as inv:
+        return inv_mod.release(inv, job_number)
+
+
+@mcp.tool()
+def receive_stock(code: str, qty: float, note: str = "") -> dict:
+    """Add a delivery to on-hand (sheets and hardware in whole units, edgebanding in lineal
+    feet). Put the PO or packing-slip number in note. CHANGES STOCK - confirm with the user
+    first."""
+    p = load_pricing(PRICING_PATH)
+    with INVENTORY.transaction() as inv:
+        return inv_mod.receive(inv, p, code.strip(), qty, note)
+
+
+@mcp.tool()
+def count_stock(code: str, counted_qty: float, note: str = "",
+                reorder_point: float = -1, reorder_qty: float = -1, pack: int = 0,
+                location: str = "") -> dict:
+    """Record a physical count (sets on-hand to what was counted and logs the difference).
+    Optionally set the reorder point, reorder quantity, pack size and rack location at the
+    same time. CHANGES STOCK - confirm with the user first."""
+    p = load_pricing(PRICING_PATH)
+    with INVENTORY.transaction() as inv:
+        out = inv_mod.count(inv, p, code.strip(), counted_qty, note)
+        if reorder_point >= 0 or reorder_qty >= 0 or pack > 0 or location:
+            it = inv["items"][code.strip()]
+            out["settings"] = inv_mod.set_reorder(
+                inv, p, code.strip(),
+                reorder_point if reorder_point >= 0 else it["reorder_point"],
+                reorder_qty if reorder_qty >= 0 else it["reorder_qty"],
+                location, pack if pack > 0 else it.get("pack", 1))
+        return out
+
+
+@mcp.tool()
+def log_remnant(material: str, length: float, width: float, location: str = "",
+                note: str = "", remove_id: str = "") -> dict:
+    """Put an offcut on the remnant rack (length along the grain, inches, 12" minimum), or
+    pass remove_id (e.g. R0007) to take one off the rack when it is used or scrapped.
+    CHANGES STOCK - confirm with the user first."""
+    p = load_pricing(PRICING_PATH)
+    with INVENTORY.transaction() as inv:
+        if remove_id:
+            return inv_mod.use_remnant(inv, remove_id.strip(), note)
+        return inv_mod.add_remnant(inv, p, material.strip(), length, width, location, note=note)
 
 
 if __name__ == "__main__":

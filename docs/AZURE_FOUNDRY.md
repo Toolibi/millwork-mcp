@@ -41,7 +41,7 @@ Either script prints the MCP server URL and saves the API key to `~/millwork-mcp
    - Server URL: `https://<your-app>.<region>.azurecontainerapps.io/mcp`
    - Connection: the one from step 2
    - Allowed tools: `review_cabinet_schedule`, `build_cutlist`, `nest_sheets`, `get_machine_profile`, `list_joinery_methods`, `get_pricing`, `estimate_and_export`
-   - Approval: require approval for `estimate_and_export` (it produces shop files). The read-only tools can run without approval.
+   - Approval: require approval for `estimate_and_export` (it produces shop files) and for every inventory tool that changes stock (`reserve_job_materials`, `consume_job_materials`, `release_job_materials`, `receive_stock`, `count_stock`, `log_remnant`). The read-only tools (`inventory_status`, `check_job_materials`, `purchase_list` and the review/nest/pricing tools) can run without approval.
 4. Agent instructions (suggested):
 
    > You are a millwork estimator for a frameless cabinet shop. Turn the user's drawings or cabinet list into a millwork-mcp job (inches). Always run review_cabinet_schedule first and show its flags before estimating. Never invent prices or machine settings: use get_pricing and get_machine_profile. Machine programs are UNVERIFIED until simulated in woodWOP and run by a person.
@@ -52,4 +52,5 @@ Either script prints the MCP server URL and saves the API key to `~/millwork-mcp
 
 - **Timeout:** Foundry tool calls time out after 100 seconds. A full kitchen runs in about 1–2 seconds.
 - **Files:** in hosted mode, shop files (DXFs, CSVs) are written inside the container and are temporary. The agent gets the estimate, flags and nest summary back. Saving files to Azure Blob Storage is the next step.
+- **Inventory:** stock lives in one JSON file at `MILLWORK_INVENTORY`. On App Service the deploy script puts it in `/home/data`, which survives restarts and redeploys. It starts from the sample stock in `examples/inventory.json`, so count your real stock in (`count_stock`) before relying on it. One instance only: the file lock doesn't span scaled-out instances (use a database for that).
 - **Pricing:** to use your real prices, mount them with `MILLWORK_PRICING` (an Azure Files mount or a secret volume). Don't put them in the image.

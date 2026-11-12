@@ -59,7 +59,8 @@ say "Configuring startup, key and hardening"
 az webapp config set -n "$APP" -g "$RG" --startup-file "python -m millwork_mcp.http_server" \
   --ftps-state Disabled --min-tls-version 1.2 -o none
 az webapp config appsettings set -n "$APP" -g "$RG" -o none --settings \
-  "MILLWORK_API_KEY=$KEY" "MILLWORK_ALLOWED_HOSTS=$HOST" "WEBSITES_PORT=8000" "SCM_DO_BUILD_DURING_DEPLOYMENT=true"
+  "MILLWORK_API_KEY=$KEY" "MILLWORK_ALLOWED_HOSTS=$HOST" "WEBSITES_PORT=8000" "SCM_DO_BUILD_DURING_DEPLOYMENT=true" \
+  "MILLWORK_INVENTORY=/home/data/inventory.json" "WEBSITES_ENABLE_APP_SERVICE_STORAGE=true"
 az webapp update -n "$APP" -g "$RG" --https-only true -o none
 az webapp restart -n "$APP" -g "$RG"
 

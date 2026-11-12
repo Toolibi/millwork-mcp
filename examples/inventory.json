@@ -1,0 +1,353 @@
+{
+ "items": {
+  "MEL-WHT-34": {
+   "on_hand": 40,
+   "reorder_point": 15,
+   "reorder_qty": 40,
+   "location": "Rack A",
+   "kind": "sheet",
+   "description": "3/4\" white melamine PB",
+   "unit": "sheet",
+   "pack": 1
+  },
+  "EB-MEL-WHT-34": {
+   "on_hand": 1000,
+   "reorder_point": 500,
+   "reorder_qty": 1000,
+   "location": "Edgebander cart",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 3/4\" white melamine PB",
+   "unit": "lf",
+   "pack": 500
+  },
+  "MEL-WHT-14": {
+   "on_hand": 25,
+   "reorder_point": 10,
+   "reorder_qty": 25,
+   "location": "Rack A",
+   "kind": "sheet",
+   "description": "1/4\" white melamine back",
+   "unit": "sheet",
+   "pack": 1
+  },
+  "EB-MEL-WHT-14": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 1/4\" white melamine back",
+   "unit": "lf"
+  },
+  "BB-58": {
+   "on_hand": 10,
+   "reorder_point": 4,
+   "reorder_qty": 10,
+   "location": "Rack B",
+   "kind": "sheet",
+   "description": "5/8\" Baltic birch (drawer boxes)",
+   "unit": "sheet",
+   "pack": 1
+  },
+  "EB-BB-58": {
+   "on_hand": 500,
+   "reorder_point": 250,
+   "reorder_qty": 500,
+   "location": "Edgebander cart",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 5/8\" Baltic birch (drawer boxes)",
+   "unit": "lf",
+   "pack": 250
+  },
+  "MEL-WHT-12": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "sheet",
+   "description": "1/2\" white melamine PB",
+   "unit": "sheet"
+  },
+  "EB-MEL-WHT-12": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 1/2\" white melamine PB",
+   "unit": "lf"
+  },
+  "MEL-WHT-38": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "sheet",
+   "description": "3/8\" white melamine",
+   "unit": "sheet"
+  },
+  "EB-MEL-WHT-38": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 3/8\" white melamine",
+   "unit": "lf"
+  },
+  "PLY-34": {
+   "on_hand": 6,
+   "reorder_point": 2,
+   "reorder_qty": 6,
+   "location": "Rack B",
+   "kind": "sheet",
+   "description": "3/4\" hardwood plywood (nailers)",
+   "unit": "sheet",
+   "pack": 1
+  },
+  "EB-PLY-34": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 3/4\" hardwood plywood (nailers)",
+   "unit": "lf"
+  },
+  "HPL-WHT": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "sheet",
+   "description": "HPL laminate, white, for pre-lam finished ends",
+   "unit": "sheet"
+  },
+  "EB-HPL-WHT": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "edgeband",
+   "description": "Edgebanding to match HPL laminate, white, for pre-lam finished ends",
+   "unit": "lf"
+  },
+  "WO-RIFT-34": {
+   "on_hand": 4,
+   "reorder_point": 2,
+   "reorder_qty": 6,
+   "location": "Rack C (veneer, flat)",
+   "kind": "sheet",
+   "description": "3/4\" rift white oak veneer ply",
+   "unit": "sheet",
+   "pack": 1
+  },
+  "EB-WO-RIFT-34": {
+   "on_hand": 250,
+   "reorder_point": 250,
+   "reorder_qty": 500,
+   "location": "Edgebander cart",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 3/4\" rift white oak veneer ply",
+   "unit": "lf",
+   "pack": 250
+  },
+  "WO-RIFT-14": {
+   "on_hand": 2,
+   "reorder_point": 1,
+   "reorder_qty": 4,
+   "location": "Rack C",
+   "kind": "sheet",
+   "description": "1/4\" rift white oak veneer ply (exposed backs)",
+   "unit": "sheet",
+   "pack": 1
+  },
+  "EB-WO-RIFT-14": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 1/4\" rift white oak veneer ply (exposed backs)",
+   "unit": "lf"
+  },
+  "HPL-MAPLE-34": {
+   "on_hand": 20,
+   "reorder_point": 10,
+   "reorder_qty": 30,
+   "location": "Rack D",
+   "kind": "sheet",
+   "description": "3/4\" PB faced both sides with woodgrain HPL (healthcare casework fronts and exposed ends)",
+   "unit": "sheet",
+   "pack": 1
+  },
+  "EB-HPL-MAPLE-34": {
+   "on_hand": 500,
+   "reorder_point": 500,
+   "reorder_qty": 1000,
+   "location": "Edgebander cart",
+   "kind": "edgeband",
+   "description": "Edgebanding to match 3/4\" PB faced both sides with woodgrain HPL (healthcare casework fronts and exposed ends)",
+   "unit": "lf",
+   "pack": 500
+  },
+  "HW-HINGE": {
+   "on_hand": 200,
+   "reorder_point": 100,
+   "reorder_qty": 200,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "Hinge (clip-top, soft close)",
+   "unit": "ea",
+   "pack": 50
+  },
+  "HW-SLIDE-PAIR": {
+   "on_hand": 40,
+   "reorder_point": 20,
+   "reorder_qty": 40,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "Undermount slide (pair)",
+   "unit": "ea",
+   "pack": 10
+  },
+  "HW-PULL": {
+   "on_hand": 120,
+   "reorder_point": 50,
+   "reorder_qty": 100,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "Pull / knob",
+   "unit": "ea",
+   "pack": 25
+  },
+  "HW-SHELF-PIN": {
+   "on_hand": 2000,
+   "reorder_point": 500,
+   "reorder_qty": 2000,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "Shelf pin",
+   "unit": "ea",
+   "pack": 1000
+  },
+  "HW-LEVELER": {
+   "on_hand": 200,
+   "reorder_point": 80,
+   "reorder_qty": 200,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "Leveler leg",
+   "unit": "ea",
+   "pack": 100
+  },
+  "HW-DOWEL-8X35": {
+   "on_hand": 5000,
+   "reorder_point": 2000,
+   "reorder_qty": 5000,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "8 x 35mm fluted dowel (3/4\" material)",
+   "unit": "ea",
+   "pack": 1000
+  },
+  "HW-DOWEL-5X25": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "hardware",
+   "description": "5 x 25mm fluted dowel (1/2\" material)",
+   "unit": "ea"
+  },
+  "HW-DOWEL-5X20": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "hardware",
+   "description": "5 x 20mm fluted dowel (3/8\" material)",
+   "unit": "ea"
+  },
+  "HW-CONFIRMAT": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "hardware",
+   "description": "7 x 50mm confirmat screw",
+   "unit": "ea"
+  },
+  "HW-CONFIRMAT-CAP": {
+   "on_hand": 0,
+   "reorder_point": 0,
+   "reorder_qty": 0,
+   "location": "",
+   "kind": "hardware",
+   "description": "Confirmat cover cap",
+   "unit": "ea"
+  },
+  "HW-CAM-BOLT-SET": {
+   "on_hand": 300,
+   "reorder_point": 100,
+   "reorder_qty": 300,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "15mm cam + connecting bolt set",
+   "unit": "ea",
+   "pack": 100
+  },
+  "HW-CLAMEX-P14": {
+   "on_hand": 80,
+   "reorder_point": 40,
+   "reorder_qty": 80,
+   "location": "Hardware cage",
+   "kind": "hardware",
+   "description": "Lamello Clamex P-14 connector pair",
+   "unit": "ea",
+   "pack": 20
+  }
+ },
+ "remnants": [
+  {
+   "id": "R0001",
+   "material": "WO-RIFT-34",
+   "length": 48.0,
+   "width": 30.0,
+   "location": "Remnant rack 1",
+   "from_job": "",
+   "added": "2026-11-12T19:15:23Z"
+  },
+  {
+   "id": "R0002",
+   "material": "WO-RIFT-34",
+   "length": 36.0,
+   "width": 22.0,
+   "location": "Remnant rack 1",
+   "from_job": "",
+   "added": "2026-11-12T19:15:23Z"
+  },
+  {
+   "id": "R0003",
+   "material": "MEL-WHT-34",
+   "length": 60.0,
+   "width": 40.0,
+   "location": "Remnant rack 2",
+   "from_job": "",
+   "added": "2026-11-12T19:15:23Z"
+  },
+  {
+   "id": "R0004",
+   "material": "MEL-WHT-34",
+   "length": 30.0,
+   "width": 24.0,
+   "location": "Remnant rack 2",
+   "from_job": "",
+   "added": "2026-11-12T19:15:23Z"
+  }
+ ],
+ "reservations": {},
+ "log": [],
+ "next_remnant": 5,
+ "_note": "SAMPLE stock for the demo. Replace with a real count (count_stock) before relying on it."
+}
