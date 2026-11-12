@@ -1,0 +1,19 @@
+{
+  "job_number": "C-4120",
+  "name": "Hospital patient room casework - typical room x 24 (fictional project)",
+  "case_material": "MEL-WHT-34",
+  "back_material": "MEL-WHT-14",
+  "door_material": "HPL-MAPLE-34",
+  "exposed_material": "HPL-MAPLE-34",
+  "joinery": "dowel",
+  "front_grain": "vertical",
+  "grain_match": false,
+  "finished_end_method": "exposed_material",
+  "cabinets": [
+    {"tag": "PW1", "type": "tall",        "width": 24, "height": 84, "depth": 24, "qty": 24, "doors": 1, "adj_shelves": 1, "fixed_shelves": 1, "finished_ends": "L", "notes": "patient wardrobe, hanging rod above fixed shelf"},
+    {"tag": "SB1", "type": "sink_base",   "width": 30, "height": 34.5, "depth": 24, "qty": 24, "doors": 2, "notes": "handwash station"},
+    {"tag": "DB1", "type": "drawer_base", "width": 18, "height": 34.5, "depth": 24, "qty": 24, "drawers": 4, "finished_ends": "R", "notes": "nurse supplies"},
+    {"tag": "W1",  "type": "wall",        "width": 30, "height": 30, "depth": 12, "qty": 24, "doors": 2, "adj_shelves": 1, "notes": "supplies over handwash"},
+    {"tag": "OS1", "type": "bookcase",    "width": 30, "height": 30, "depth": 12, "qty": 24, "adj_shelves": 1, "against_wall": true, "notes": "open family shelf at window seat"}
+  ]
+}

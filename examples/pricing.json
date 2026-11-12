@@ -5,81 +5,220 @@
     "key": "stiles_nested",
     "name": "Stiles / HOMAG nested-based CNC router (woodWOP)",
     "type": "nested",
-    "tool_dia": {"value": 0.375, "source": "assumed"},
-    "part_spacing": {"value": 0.5, "source": "assumed"},
-    "sheet_margin": {"value": 0.25, "source": "assumed"},
-    "cut_through": {"value": 0.008, "source": "assumed"},
-    "contour_tool": {"value": 101, "source": "assumed"},
-    "dado_tool": {"value": 102, "source": "assumed"},
-    "clamex_tool": {"value": 103, "source": "assumed"},
-    "drill_mode": {"value": "LS", "source": "assumed"},
-    "horizontal_boring": {"value": false, "source": "assumed"},
-    "small_part_in": {"value": 4.0, "source": "assumed"},
-    "feed_ipm": {"value": 700.0, "source": "assumed"},
-    "load_min_per_sheet": {"value": 3.0, "source": "assumed"},
-    "sec_per_bore": {"value": 2.0, "source": "assumed"},
-    "edge_bore_sec": {"value": 4.0, "source": "assumed"},
-    "hr_per_prelam_sheet": {"value": 0.5, "source": "assumed"}
+    "tool_dia": {
+      "value": 0.375,
+      "source": "assumed"
+    },
+    "part_spacing": {
+      "value": 0.5,
+      "source": "assumed"
+    },
+    "sheet_margin": {
+      "value": 0.25,
+      "source": "assumed"
+    },
+    "cut_through": {
+      "value": 0.008,
+      "source": "assumed"
+    },
+    "contour_tool": {
+      "value": 101,
+      "source": "assumed"
+    },
+    "dado_tool": {
+      "value": 102,
+      "source": "assumed"
+    },
+    "clamex_tool": {
+      "value": 103,
+      "source": "assumed"
+    },
+    "drill_mode": {
+      "value": "LS",
+      "source": "assumed"
+    },
+    "horizontal_boring": {
+      "value": false,
+      "source": "assumed"
+    },
+    "small_part_in": {
+      "value": 4.0,
+      "source": "assumed"
+    },
+    "feed_ipm": {
+      "value": 700.0,
+      "source": "assumed"
+    },
+    "load_min_per_sheet": {
+      "value": 3.0,
+      "source": "assumed"
+    },
+    "sec_per_bore": {
+      "value": 2.0,
+      "source": "assumed"
+    },
+    "edge_bore_sec": {
+      "value": 4.0,
+      "source": "assumed"
+    },
+    "hr_per_prelam_sheet": {
+      "value": 0.5,
+      "source": "assumed"
+    }
   },
   "kerf": 0.125,
   "trim": 0.25,
   "edgeband_per_lf": 0.35,
-  "edgeband_waste": 0.10,
+  "edgeband_waste": 0.1,
   "overhead_pct": 0.15,
-  "markup_pct": 0.30,
+  "markup_pct": 0.3,
   "materials": [
-    {"code": "MEL-WHT-34", "description": "3/4\" white melamine PB", "thickness": 0.75,
-     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 58.00, "grained": false},
-    {"code": "MEL-WHT-14", "description": "1/4\" white melamine back", "thickness": 0.25,
-     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 32.00, "grained": false},
-    {"code": "BB-58", "description": "5/8\" Baltic birch (drawer boxes)", "thickness": 0.625,
-     "sheet_length": 60, "sheet_width": 60, "sheet_cost": 72.00, "grained": true},
-    {"code": "MEL-WHT-12", "description": "1/2\" white melamine PB", "thickness": 0.5,
-     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 46.00, "grained": false},
-    {"code": "MEL-WHT-38", "description": "3/8\" white melamine", "thickness": 0.375,
-     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 40.00, "grained": false},
-    {"code": "PLY-34", "description": "3/4\" hardwood plywood (nailers)", "thickness": 0.75,
-     "sheet_length": 96, "sheet_width": 48, "sheet_cost": 62.00, "grained": true},
-    {"code": "HPL-WHT", "description": "HPL laminate, white, for pre-lam finished ends", "thickness": 0.039,
-     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 48.00, "grained": false},
-    {"code": "WO-RIFT-34", "description": "3/4\" rift white oak veneer ply", "thickness": 0.75,
-     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 165.00, "grained": true},
-    {"code": "WO-RIFT-14", "description": "1/4\" rift white oak veneer ply (exposed backs)", "thickness": 0.25,
-     "sheet_length": 97, "sheet_width": 49, "sheet_cost": 78.00, "grained": true}
+    {
+      "code": "MEL-WHT-34",
+      "description": "3/4\" white melamine PB",
+      "thickness": 0.75,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 58.0,
+      "grained": false
+    },
+    {
+      "code": "MEL-WHT-14",
+      "description": "1/4\" white melamine back",
+      "thickness": 0.25,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 32.0,
+      "grained": false
+    },
+    {
+      "code": "BB-58",
+      "description": "5/8\" Baltic birch (drawer boxes)",
+      "thickness": 0.625,
+      "sheet_length": 60,
+      "sheet_width": 60,
+      "sheet_cost": 72.0,
+      "grained": true
+    },
+    {
+      "code": "MEL-WHT-12",
+      "description": "1/2\" white melamine PB",
+      "thickness": 0.5,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 46.0,
+      "grained": false
+    },
+    {
+      "code": "MEL-WHT-38",
+      "description": "3/8\" white melamine",
+      "thickness": 0.375,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 40.0,
+      "grained": false
+    },
+    {
+      "code": "PLY-34",
+      "description": "3/4\" hardwood plywood (nailers)",
+      "thickness": 0.75,
+      "sheet_length": 96,
+      "sheet_width": 48,
+      "sheet_cost": 62.0,
+      "grained": true
+    },
+    {
+      "code": "HPL-WHT",
+      "description": "HPL laminate, white, for pre-lam finished ends",
+      "thickness": 0.039,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 48.0,
+      "grained": false
+    },
+    {
+      "code": "WO-RIFT-34",
+      "description": "3/4\" rift white oak veneer ply",
+      "thickness": 0.75,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 165.0,
+      "grained": true
+    },
+    {
+      "code": "WO-RIFT-14",
+      "description": "1/4\" rift white oak veneer ply (exposed backs)",
+      "thickness": 0.25,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 78.0,
+      "grained": true
+    },
+    {
+      "code": "HPL-MAPLE-34",
+      "description": "3/4\" PB faced both sides with woodgrain HPL (healthcare casework fronts and exposed ends)",
+      "thickness": 0.75,
+      "sheet_length": 97,
+      "sheet_width": 49,
+      "sheet_cost": 118.0,
+      "grained": true,
+      "figured": false
+    }
   ],
   "hardware": {
     "hinge": 4.25,
-    "slide_pair": 38.00,
-    "pull": 6.50,
+    "slide_pair": 38.0,
+    "pull": 6.5,
     "shelf_pin": 0.12,
-    "leveler": 1.40
+    "leveler": 1.4
   },
   "joinery_hardware": {
-    "dowel_8x35": {"description": "8 x 35mm fluted dowel (3/4\" material)", "unit_cost": 0.03},
-    "dowel_5x25": {"description": "5 x 25mm fluted dowel (1/2\" material)", "unit_cost": 0.02},
-    "dowel_5x20": {"description": "5 x 20mm fluted dowel (3/8\" material)", "unit_cost": 0.02},
-    "confirmat": {"description": "7 x 50mm confirmat screw", "unit_cost": 0.07},
-    "confirmat_cap": {"description": "Confirmat cover cap", "unit_cost": 0.02},
-    "cam_bolt_set": {"description": "15mm cam + connecting bolt set", "unit_cost": 0.45},
-    "clamex_p14": {"description": "Lamello Clamex P-14 connector pair", "unit_cost": 1.60}
+    "dowel_8x35": {
+      "description": "8 x 35mm fluted dowel (3/4\" material)",
+      "unit_cost": 0.03
+    },
+    "dowel_5x25": {
+      "description": "5 x 25mm fluted dowel (1/2\" material)",
+      "unit_cost": 0.02
+    },
+    "dowel_5x20": {
+      "description": "5 x 20mm fluted dowel (3/8\" material)",
+      "unit_cost": 0.02
+    },
+    "confirmat": {
+      "description": "7 x 50mm confirmat screw",
+      "unit_cost": 0.07
+    },
+    "confirmat_cap": {
+      "description": "Confirmat cover cap",
+      "unit_cost": 0.02
+    },
+    "cam_bolt_set": {
+      "description": "15mm cam + connecting bolt set",
+      "unit_cost": 0.45
+    },
+    "clamex_p14": {
+      "description": "Lamello Clamex P-14 connector pair",
+      "unit_cost": 1.6
+    }
   },
   "joinery_assembly_factor": {
     "_note": "Multiplier on assembly_hr_per_box. Glued dowels need clamp time; screws and knock-down fittings assemble faster.",
-    "dowel": 1.00,
+    "dowel": 1.0,
     "confirmat": 0.75,
     "cam_dowel": 0.85,
-    "lamello_clamex": 0.80
+    "lamello_clamex": 0.8
   },
   "labor": {
-    "rate_per_hr": 55.00,
+    "rate_per_hr": 55.0,
     "assembly_hr_per_box": 0.75,
     "hr_per_door": 0.15,
-    "hr_per_drawer": 0.40,
+    "hr_per_drawer": 0.4,
     "saw_hr_per_sheet": 0.12,
     "cnc_min_per_part": 1.5,
     "cnc_sec_per_op": 2.5,
     "edgeband_hr_per_lf": 0.004,
     "hr_per_grain_match_group": 0.35,
-    "hr_per_prelam_panel": 0.30
+    "hr_per_prelam_panel": 0.3
   }
 }

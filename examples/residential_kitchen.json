@@ -1,0 +1,26 @@
+{
+  "job_number": "R-2611",
+  "name": "Residential kitchen - rift white oak slab fronts, grain matched (fictional client)",
+  "case_material": "MEL-WHT-34",
+  "back_material": "MEL-WHT-14",
+  "door_material": "WO-RIFT-34",
+  "exposed_material": "WO-RIFT-34",
+  "exposed_back_material": "WO-RIFT-14",
+  "joinery": "dowel",
+  "front_grain": "vertical",
+  "grain_match": true,
+  "finished_end_method": "exposed_material",
+  "cabinets": [
+    {"tag": "B1",  "type": "base",        "width": 15, "height": 34.5, "depth": 24, "doors": 1, "drawers": 1, "adj_shelves": 1, "finished_ends": "L", "notes": "end of run at range wall"},
+    {"tag": "DB1", "type": "drawer_base", "width": 30, "height": 34.5, "depth": 24, "drawers": 3, "notes": "pots and pans, left of range"},
+    {"tag": "DB2", "type": "drawer_base", "width": 30, "height": 34.5, "depth": 24, "drawers": 3, "notes": "right of range"},
+    {"tag": "SB1", "type": "sink_base",   "width": 36, "height": 34.5, "depth": 24, "doors": 2, "notes": "under window"},
+    {"tag": "B2",  "type": "base",        "width": 24, "height": 34.5, "depth": 24, "doors": 1, "drawers": 1, "adj_shelves": 1, "notes": "dishwasher to the left"},
+    {"tag": "DB3", "type": "drawer_base", "width": 18, "height": 34.5, "depth": 24, "drawers": 4, "finished_ends": "R", "notes": "cutlery / utensils, end of run"},
+    {"tag": "W1",  "type": "wall",        "width": 30, "height": 36, "depth": 12, "doors": 2, "adj_shelves": 2, "finished_ends": "L"},
+    {"tag": "W2",  "type": "wall",        "width": 36, "height": 18, "depth": 15, "doors": 2, "notes": "over refrigerator"},
+    {"tag": "MW1", "type": "microwave",   "width": 30, "height": 36, "depth": 15, "doors": 2, "opening_height": 17, "adj_shelves": 1, "notes": "over-the-counter microwave, open below fixed shelf"},
+    {"tag": "OS1", "type": "bookcase",    "width": 24, "height": 36, "depth": 12, "adj_shelves": 2, "joinery": "lamello_clamex", "against_wall": false, "notes": "open shelving at end of wall run"},
+    {"tag": "T1",  "type": "tall",        "width": 24, "height": 84, "depth": 24, "doors": 2, "adj_shelves": 4, "fixed_shelves": 1, "joinery": "cam_dowel", "finished_ends": "LR", "notes": "pantry, ships knocked down"}
+  ]
+}

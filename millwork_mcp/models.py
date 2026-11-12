@@ -22,6 +22,8 @@ class Material:
     sheet_width: float = 49.0
     sheet_cost: float = 0.0
     grained: bool = False       # if True, parts may not be rotated on the sheet
+    figured: bool = True        # natural veneer whose figure should run across fronts;
+                                # False for printed woodgrain laminate (grain direction only)
 
 
 @dataclass

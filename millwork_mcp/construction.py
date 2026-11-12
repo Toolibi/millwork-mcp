@@ -457,7 +457,7 @@ def review_job(job: Job, materials: dict[str, Material] | None = None) -> list[s
             flags.append(f"Nailer material {nm.code} is {nm.thickness}\" thick but the back setback "
                          f"is {ConstructionStandard().back_setback}\" - nailers will not sit flush")
         dm = materials.get(job.door_material)
-        if dm and dm.grained and not job.grain_match:
+        if dm and dm.grained and dm.figured and not job.grain_match:
             flags.append("Grained fronts without grain match - figure will not run across doors/drawers")
         em = materials.get(job.exposed_material) if job.exposed_material else None
         if em and dm and em.grained and dm.grained and em.code != dm.code:

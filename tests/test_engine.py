@@ -620,3 +620,19 @@ def test_review_flags_material_codes_not_in_price_list():
     ok = review_job(job_from_dict(json.loads((ROOT / "examples" / "white_oak_kitchen.json").read_text())),
                     materials_from_pricing(PRICING))
     assert not any("not in the price list" in f for f in ok)
+
+
+def test_printed_laminate_does_not_need_grain_match():
+    mats = materials_from_pricing(PRICING)
+    job = json.loads((ROOT / "examples" / "hospital_patient_room.json").read_text())
+    assert not any("grain match" in f for f in review_job(job_from_dict(job), mats))
+    job["door_material"] = "WO-RIFT-34"   # real veneer, same job: now it should ask
+    assert any("grain match" in f for f in review_job(job_from_dict(job), mats))
+
+
+@pytest.mark.parametrize("name", ["residential_kitchen", "hospital_patient_room"])
+def test_demo_projects_run_clean(name, tmp_path):
+    job = json.loads((ROOT / "examples" / f"{name}.json").read_text())
+    assert review_job(job_from_dict(job), materials_from_pricing(PRICING)) == []
+    r = run_job(job, PRICING, tmp_path)
+    assert r["totals"]["sell_price"] > 0 and r["part_count"] > 0
