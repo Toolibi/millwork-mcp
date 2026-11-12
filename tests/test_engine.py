@@ -636,3 +636,36 @@ def test_demo_projects_run_clean(name, tmp_path):
     assert review_job(job_from_dict(job), materials_from_pricing(PRICING)) == []
     r = run_job(job, PRICING, tmp_path)
     assert r["totals"]["sell_price"] > 0 and r["part_count"] > 0
+
+
+def test_estimate_breaks_labor_into_named_lines():
+    est = estimate_job(job_from_dict(json.loads((ROOT / "examples" / "residential_kitchen.json").read_text())), PRICING)
+    b = est["labor"]["breakdown_hours"]
+    assert {"machining", "edgebanding", "assembly", "doors_hung", "drawers_fitted"} <= set(b)
+    assert abs(sum(b.values()) - est["labor"]["hours"]) < 0.05
+    assert b["edgebanding"] > 0 and b["machining"] > 0
+
+
+def test_sheet_size_comparison_finds_cheaper_size_and_keeps_core_change_separate():
+    from millwork_mcp.sheet_options import compare_sheet_options
+    job = job_from_dict(json.loads((ROOT / "examples" / "residential_kitchen.json").read_text()))
+    r = compare_sheet_options(job, PRICING, material="WO-RIFT-34")
+    oak = r["materials"][0]
+    cur = next(o for o in oak["options"] if o["current"])
+    big = next(o for o in oak["options"] if o["option"] == "4x10")
+    assert big["sheets"] < cur["sheets"]               # longer sheets, fewer of them
+    assert oak["recommendation"].startswith("Use 4x10")
+    assert "MDF" not in oak["recommendation"]           # a core swap is never auto-picked
+    assert oak["core_alternatives"] and "spec change" in oak["core_alternatives"][0]
+    assert r["same_for_every_size"]["edgebanding_hours"] > 0
+
+
+def test_sheet_larger_than_router_bed_is_rejected():
+    from dataclasses import replace
+    from millwork_mcp.machine import machine_from_pricing
+    from millwork_mcp.sheet_options import compare_sheet_options
+    job = job_from_dict(json.loads((ROOT / "examples" / "residential_kitchen.json").read_text()))
+    small_bed = replace(machine_from_pricing(PRICING), bed_length=100.0)
+    r = compare_sheet_options(job, PRICING, material="WO-RIFT-34", machine=small_bed)
+    ten = next(o for o in r["materials"][0]["options"] if o["option"] == "4x10")
+    assert ten["fits_machine"] is False and "router bed" in ten["note"]

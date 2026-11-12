@@ -27,6 +27,7 @@ from .nesting import prepare_for_saw, nest_parts, saw_cut_list
 from .machine import machine_from_pricing
 from .pipeline import job_from_dict, run_job
 from .router_nest import nest_job_router
+from .sheet_options import compare_sheet_options
 
 ROOT = Path(__file__).resolve().parent.parent
 PRICING_PATH = Path(os.environ.get("MILLWORK_PRICING", ROOT / "examples" / "pricing.json"))
@@ -116,8 +117,9 @@ def get_machine_profile() -> dict:
 
 @mcp.tool()
 def estimate_and_export(job: dict) -> dict:
-    """Full run: cut list, nesting, estimate (materials, edgebanding, hardware, labor,
-    overhead, markup) and shop files. On the nested router: one woodWOP-layer DXF per
+    """Full run: cut list, nesting, estimate (materials, edgebanding, hardware, labor with
+    hours broken down into machining, edgebanding, assembly, doors and drawers, overhead,
+    markup) and shop files. On the nested router: one woodWOP-layer DXF per
     sheet (mm, tool-centre cut-outs, bores, dados), nest diagrams, cut order and the
     edge-boring list; on a panel-saw shop: saw list. Always: cut list with routes, CNC list,
     per-part DXFs.
@@ -131,6 +133,18 @@ def estimate_and_export(job: dict) -> dict:
     safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(job.get("job_number", "job")))[:64].lstrip(".") or "job"
     out = OUTPUT_ROOT / safe
     return {**run_job(job, load_pricing(PRICING_PATH), out), "license": NOTICE}
+
+
+@mcp.tool()
+def compare_sheet_sizes(job: dict, material: str = "") -> dict:
+    """Nest the job on every sheet size (and core) the supplier sells - 4x8, 5x8, 4x10,
+    5x10... - and compare sheets, yield, material cost and router time per material, with a
+    recommendation and the saving. Edgebanding, edge boring and assembly hours are the same
+    for every size and are reported once. Leave material empty to compare every material in
+    the job, or give one code (e.g. WO-RIFT-34). Same job format as review_cabinet_schedule.
+    Read-only: writes no files."""
+    return compare_sheet_options(job_from_dict(job), load_pricing(PRICING_PATH),
+                                 material=material or None)
 
 
 @mcp.tool()

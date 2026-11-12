@@ -29,6 +29,9 @@ build_cutlist ─────────── construction standard → every 
       ▼
 nest_sheets ───────────── router nest (MaxRects) or panel-saw guillotine → sheets, yield
       ▼
+compare_sheet_sizes ───── same parts on 4x8 / 5x8 / 4x10 / 5x10 (and alternate cores)
+                           → sheets, yield, material $, router time, best option
+      ▼
 estimate_and_export ───── materials from the real nest + hardware + labor + markup
                            → estimate.json, cutlist.csv, saw_list.csv,
                              per-part DXFs with machining layers, nest diagrams

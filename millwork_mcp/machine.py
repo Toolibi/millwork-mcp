@@ -46,6 +46,8 @@ class MachineProfile:
     sec_per_bore: float = 2.0
     edge_bore_sec: float = 4.0         # per edge bore on the separate horizontal borer
     hr_per_prelam_sheet: float = 0.5   # press a full sheet of laminate before nesting
+    bed_length: float = 145.0          # largest sheet the table holds, inches (5x12 bed)
+    bed_width: float = 61.0
     sources: dict = field(default_factory=dict)
 
     @property

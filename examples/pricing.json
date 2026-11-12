@@ -64,6 +64,14 @@
     "hr_per_prelam_sheet": {
       "value": 0.5,
       "source": "assumed"
+    },
+    "bed_length": {
+      "value": 145.0,
+      "source": "assumed"
+    },
+    "bed_width": {
+      "value": 61.0,
+      "source": "assumed"
     }
   },
   "kerf": 0.125,
@@ -80,7 +88,27 @@
       "sheet_length": 97,
       "sheet_width": 49,
       "sheet_cost": 58.0,
-      "grained": false
+      "grained": false,
+      "sheet_options": [
+        {
+          "label": "5x8",
+          "length": 97,
+          "width": 61,
+          "cost": 74.0
+        },
+        {
+          "label": "4x10",
+          "length": 121,
+          "width": 49,
+          "cost": 76.0
+        },
+        {
+          "label": "5x10",
+          "length": 121,
+          "width": 61,
+          "cost": 96.0
+        }
+      ]
     },
     {
       "code": "MEL-WHT-14",
@@ -89,7 +117,15 @@
       "sheet_length": 97,
       "sheet_width": 49,
       "sheet_cost": 32.0,
-      "grained": false
+      "grained": false,
+      "sheet_options": [
+        {
+          "label": "5x10",
+          "length": 121,
+          "width": 61,
+          "cost": 50.0
+        }
+      ]
     },
     {
       "code": "BB-58",
@@ -125,7 +161,21 @@
       "sheet_length": 96,
       "sheet_width": 48,
       "sheet_cost": 62.0,
-      "grained": true
+      "grained": true,
+      "sheet_options": [
+        {
+          "label": "4x10",
+          "length": 120,
+          "width": 48,
+          "cost": 82.0
+        },
+        {
+          "label": "5x10",
+          "length": 120,
+          "width": 60,
+          "cost": 108.0
+        }
+      ]
     },
     {
       "code": "HPL-WHT",
@@ -140,19 +190,49 @@
       "code": "WO-RIFT-34",
       "description": "3/4\" rift white oak veneer ply",
       "thickness": 0.75,
-      "sheet_length": 97,
-      "sheet_width": 49,
+      "sheet_length": 96,
+      "sheet_width": 48,
       "sheet_cost": 165.0,
-      "grained": true
+      "grained": true,
+      "sheet_options": [
+        {
+          "label": "4x10",
+          "length": 120,
+          "width": 48,
+          "cost": 215.0
+        },
+        {
+          "label": "5x10",
+          "length": 120,
+          "width": 60,
+          "cost": 280.0
+        },
+        {
+          "label": "4x8 MDF core",
+          "length": 96,
+          "width": 48,
+          "cost": 150.0,
+          "note": "MDF core: flatter doors, heavier, weaker screw hold at hinges",
+          "kind": "core"
+        }
+      ]
     },
     {
       "code": "WO-RIFT-14",
       "description": "1/4\" rift white oak veneer ply (exposed backs)",
       "thickness": 0.25,
-      "sheet_length": 97,
-      "sheet_width": 49,
+      "sheet_length": 96,
+      "sheet_width": 48,
       "sheet_cost": 78.0,
-      "grained": true
+      "grained": true,
+      "sheet_options": [
+        {
+          "label": "4x10",
+          "length": 120,
+          "width": 48,
+          "cost": 99.0
+        }
+      ]
     },
     {
       "code": "HPL-MAPLE-34",
@@ -162,7 +242,21 @@
       "sheet_width": 49,
       "sheet_cost": 118.0,
       "grained": true,
-      "figured": false
+      "figured": false,
+      "sheet_options": [
+        {
+          "label": "4x10",
+          "length": 121,
+          "width": 49,
+          "cost": 150.0
+        },
+        {
+          "label": "5x10",
+          "length": 121,
+          "width": 61,
+          "cost": 192.0
+        }
+      ]
     }
   ],
   "hardware": {
@@ -220,5 +314,6 @@
     "edgeband_hr_per_lf": 0.004,
     "hr_per_grain_match_group": 0.35,
     "hr_per_prelam_panel": 0.3
-  }
+  },
+  "_sheet_options_note": "sheet_options prices are SAMPLE figures for comparison only - confirm with your supplier"
 }

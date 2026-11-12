@@ -46,6 +46,14 @@ def _material_line(code: str, m: Material, sheets: int, yld: float, note: str = 
             "cost": round(sheets * m.sheet_cost, 2)}
 
 
+def sheet_handling_and_cut_hours(res, machine: MachineProfile) -> float:
+    """Router time that depends on the sheet layout: load/label/unload per sheet plus the
+    cut-out path (part perimeter plus lead-in) at the contour feed."""
+    r = machine.tool_dia / 2
+    cut_in = sum(2 * (p.length + p.width) + 8 * r for sh in res.sheets for p in sh.placements)
+    return res.sheet_count * machine.load_min_per_sheet / 60 + cut_in / machine.feed_ipm / 60
+
+
 def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = None,
                  machine: MachineProfile | None = None) -> dict:
     std = std or ConstructionStandard()
@@ -121,14 +129,11 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
     if machine.is_nested:
         # router: load/unload per sheet + cut-out path at feed + bores; the separate
         # horizontal borer picks up edge bores when the router has no horizontal unit
-        r = machine.tool_dia / 2
-        cut_in = sum(2 * (p.length + p.width) + 8 * r for res in nests.values()
-                     for sh in res.sheets for p in sh.placements)
         dado_in = sum(p.qty * p.length for p in parts for o in p.machining if o["op"] == "dado")
         bores = sum(p.qty for p in parts for o in p.machining if o["op"] in ("drill", "pocket"))
         edge_bores = sum(p.qty for p in parts for o in p.machining if o["op"] == "edge_drill")
-        router_hr = (total_sheets * machine.load_min_per_sheet / 60
-                     + (cut_in + dado_in) / machine.feed_ipm / 60
+        router_hr = (sum(sheet_handling_and_cut_hours(res, machine) for res in nests.values())
+                     + dado_in / machine.feed_ipm / 60
                      + bores * machine.sec_per_bore / 3600)
         edge_hr = 0.0 if machine.horizontal_boring else edge_bores * machine.edge_bore_sec / 3600
         if machine.horizontal_boring:
@@ -151,14 +156,15 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
         machine_labor = {"saw_hours": round(saw_hr, 2), "cnc_hours": round(cnc_hr, 2),
                          "cnc_pieces": cnc_pieces, "cnc_operations": cnc_ops}
         gm_hr = gm_groups * lab["hr_per_grain_match_group"]
-    labor_hours = (
-        assembly
-        + gm_hr
-        + sum(d.qty for d in doors) * lab["hr_per_door"]
-        + slides * lab["hr_per_drawer"]
-        + machine_hr
-        + eb_lf * lab["edgeband_hr_per_lf"]
-    )
+    breakdown = {
+        "machining": machine_hr,
+        "edgebanding": eb_lf * lab["edgeband_hr_per_lf"],
+        "assembly": assembly,
+        "doors_hung": sum(d.qty for d in doors) * lab["hr_per_door"],
+        "drawers_fitted": slides * lab["hr_per_drawer"],
+        "grain_match_layout": gm_hr,
+    }
+    labor_hours = sum(breakdown.values())
     labor_cost = labor_hours * lab["rate_per_hr"]
 
     direct = sum(m["cost"] for m in material_lines) + eb_cost + hw_cost + labor_cost
@@ -179,7 +185,9 @@ def estimate_job(job: Job, pricing: dict, std: ConstructionStandard | None = Non
         "edgeband": {"lf": round(eb_lf, 1), "cost": round(eb_cost, 2)},
         "hardware": hardware_lines,
         "labor": {"hours": round(labor_hours, 2), "rate": lab["rate_per_hr"],
-                  "cost": round(labor_cost, 2), **machine_labor},
+                  "cost": round(labor_cost, 2),
+                  "breakdown_hours": {k: round(v, 2) for k, v in breakdown.items()},
+                  **machine_labor},
         "totals": {
             "direct_cost": round(direct, 2),
             "overhead": round(overhead, 2),

@@ -24,6 +24,9 @@ class Material:
     grained: bool = False       # if True, parts may not be rotated on the sheet
     figured: bool = True        # natural veneer whose figure should run across fronts;
                                 # False for printed woodgrain laminate (grain direction only)
+    # other sheet sizes / cores the supplier sells, for compare_sheet_options:
+    # [{"label": "5x10", "length": 121, "width": 61, "cost": 285.0, "note": "..."}]
+    sheet_options: list = field(default_factory=list)
 
 
 @dataclass
