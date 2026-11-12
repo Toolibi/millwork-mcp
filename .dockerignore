@@ -1,0 +1,12 @@
+.git
+output
+tests
+db
+shop
+customer_jobs
+*.private.json
+pricing.local.json
+.env*
+__pycache__
+.pytest_cache
+*.zip

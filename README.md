@@ -108,7 +108,7 @@ Connector counts flow into the hardware list, and each method has its own assemb
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q                 # 54 tests: nested router, woodWOP export, dowel spec, construction spec, joinery, grain match, CNC routing, nesting, estimate, DXF
+python -m pytest -q                 # 65 tests: hosted HTTP mode and key auth, nested router, woodWOP export, dowel spec, construction spec, joinery, grain match, CNC routing, nesting, estimate, DXF
 python -m millwork_mcp.cli examples/sample_kitchen.json
 python -m millwork_mcp.cli examples/white_oak_kitchen.json
 ```
@@ -128,6 +128,10 @@ python -m millwork_mcp.cli examples/white_oak_kitchen.json
 ```
 
 Then: *"Here's the kitchen elevation PDF. Extract the cabinet schedule, review it, and give me a bid and saw list."*
+
+## Hosted mode (Azure / Microsoft Foundry)
+
+`python -m millwork_mcp.http_server` serves the same tools over streamable HTTP for remote MCP clients such as Microsoft Foundry agents. The endpoint is locked with an API key, accepts only small stateless requests, and refuses to start without a strong key. `deploy/azure_deploy.sh` deploys it to Azure Container Apps from Cloud Shell, scaling to zero when idle. See [docs/AZURE_FOUNDRY.md](docs/AZURE_FOUNDRY.md).
 
 ## Tools
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -125,7 +126,8 @@ def estimate_and_export(job: dict) -> dict:
     microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
     opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
     """
-    out = OUTPUT_ROOT / job["job_number"]
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(job.get("job_number", "job")))[:64].lstrip(".") or "job"
+    out = OUTPUT_ROOT / safe
     return {**run_job(job, load_pricing(PRICING_PATH), out), "license": NOTICE}
 
 
