@@ -31,6 +31,8 @@ def test_seed_copied_and_catalog_covers_price_list(store):
     codes = {r["code"] for r in s["items"]}
     assert {"MEL-WHT-34", "WO-RIFT-34", "EB-WO-RIFT-34", "HW-HINGE"} <= codes
     assert I.catalog(PRICING)["HW-DOWEL-8X35"]["unit"] == "ea"
+    low = I.status(inv, PRICING, low_only=True)
+    assert low["stock_value"] == s["stock_value"] > 5000 and len(low["items"]) < len(s["items"])
 
 
 def test_needs_match_the_estimate(store):

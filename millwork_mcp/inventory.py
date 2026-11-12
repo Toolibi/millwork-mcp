@@ -203,11 +203,13 @@ def status(inv: dict, pricing: dict, code: str = "", low_only: bool = False) -> 
     if code and not rows:
         raise ValueError(f"Unknown code {code}. Codes come from get_pricing: sheet codes, "
                          f"EB-<sheet code> for edgebanding, HW-... for hardware")
+    value = round(sum(r["value"] for r in rows), 2)       # before the low-only filter
     if low_only:
         rows = [r for r in rows if r["status"] != "ok"]
     rems = [r for r in inv["remnants"] if not code or r["material"] == code]
     return {"items": rows,
-            "stock_value": round(sum(r["value"] for r in rows), 2),
+            "stock_value": value,
+            "stock_value_covers": f"item {code}" if code else "all stock on hand",
             "remnants": rems,
             "open_reservations": {j: {"reserved_at": v["at"], "lines": len(v["lines"])}
                                   for j, v in inv["reservations"].items()
