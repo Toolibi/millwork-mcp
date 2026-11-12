@@ -142,7 +142,7 @@ def export_router_nests(nests: dict[str, RouterNestResult], materials: dict[str,
             safe = key.replace("+", "_PRELAM_")
             dxfs.append(export_sheet_dxf(sh, core, machine, out_dir / f"{safe}_sheet{sh.index}.dxf"))
             p = out_dir / f"{safe}_sheet{sh.index}.svg"
-            p.write_text(router_svg(sh, machine))
+            p.write_text(router_svg(sh, machine, thickness=core.thickness, grained=core.grained))
             svgs.append(p)
             ops = sheet_ops(sh, machine, core.thickness)
             for n, c in enumerate(ops["contours"], 1):
@@ -172,21 +172,123 @@ def export_router_nests(nests: dict[str, RouterNestResult], materials: dict[str,
             "edge_bores": len(edge_rows)}
 
 
-def router_svg(sheet: RouterSheet, machine: MachineProfile, scale: float = 8.0) -> str:
+# colours for the operator's nest diagram (the DXF carries the real woodWOP layers)
+_SVG_KEY = [
+    ("shelf", "#2e7d32", "Shelf-pin hole 5mm"),
+    ("dowel", "#c62828", "Dowel / joint bore (face)"),
+    ("edge", "#c62828", "Edge bore (horizontal borer)"),
+    ("cup", "#6a1b9a", "Hinge cup 35mm"),
+    ("cam", "#ef6c00", "Cam / access bore"),
+    ("through", "#000000", "Through hole"),
+    ("dado", "#1565c0", "Dado (1/4\" back)"),
+    ("clamex", "#00838f", "Clamex P-14 groove"),
+    ("cut", "#555555", "Cut-out path (tool centre)"),
+]
+
+
+def _bore_kind(b: dict) -> str:
+    if b.get("through"):
+        return "through"
+    d = b["dia_mm"]
+    if d >= 30:
+        return "cup"
+    if d >= 10 or b.get("role") in ("cam", "access"):
+        return "cam"
+    if d <= 5.01:
+        return "shelf"
+    return "dowel"
+
+
+def _edge_points(pl: RouterPlacement, o: dict) -> tuple[tuple, tuple]:
+    """Where an edge bore enters the part, and a point inward along the bore, in sheet inches."""
+    part, e, x, depth = pl.part, o.get("edge", "W1"), o["x"], o.get("depth", 1.0)
+    if e in ("W1", "W2"):                       # ends of the part (across its width)
+        y0, y1 = (0.0, depth) if e == "W1" else (part.length, part.length - depth)
+        return _to_sheet(pl, x, y0), _to_sheet(pl, x, y1)
+    x0, x1 = (0.0, depth) if e == "L1" else (part.width, part.width - depth)
+    return _to_sheet(pl, x0, x), _to_sheet(pl, x1, x)
+
+
+def router_svg(sheet: RouterSheet, machine: MachineProfile, scale: float = 8.0,
+               thickness: float = 0.75, grained: bool = False) -> str:
+    """Operator's nest diagram: parts, cut order, and every machining operation drawn on the
+    part where the router (or the horizontal borer) will make it."""
     W, H = sheet.length * scale, sheet.width * scale
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W + 20:.0f} {H + 40:.0f}" '
+    ox, oy = 10, 24
+    legend_h = 44
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W + 20:.0f} {H + 40 + legend_h:.0f}" '
            f'font-family="Arial" font-size="10">',
+           '<rect width="100%" height="100%" fill="#ffffff"/>',
            f'<text x="10" y="14" font-size="13">Sheet {sheet.index} - {sheet.material} - nested, '
-           f'yield {sheet.yield_pct:.1f}%</text>',
-           f'<rect x="10" y="24" width="{W:.1f}" height="{H:.1f}" fill="#f3efe6" stroke="#333"/>']
-    for n, pl in enumerate(sheet.cut_order(), 1):
-        x, y = 10 + pl.x * scale, 24 + pl.y * scale
+           f'yield {sheet.yield_pct:.1f}%' + (' - grain runs left to right' if grained else '') + '</text>',
+           f'<rect x="{ox}" y="{oy}" width="{W:.1f}" height="{H:.1f}" fill="#f3efe6" stroke="#333"/>']
+    P = lambda pt: (ox + pt[0] * scale, oy + pt[1] * scale)
+    col = {k: c for k, c, _ in _SVG_KEY}
+    ops = sheet_ops(sheet, machine, thickness)
+    order = {id(pl): n for n, pl in enumerate(sheet.cut_order(), 1)}
+
+    for pl in sheet.placements:                                  # parts
+        x, y = P((pl.x, pl.y))
         w, h = pl.length * scale, pl.width * scale
-        fill = "#e8d8b8" if pl.group else "#cfe0f0"
+        fill = "#e8d8b8" if pl.group else "#dfe9f3"
         out.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" '
-                   f'fill="{fill}" stroke="#1F4E79"/>')
-        if w > 40 and h > 18:
+                   f'fill="{fill}" stroke="#1F4E79" stroke-width="0.8"/>')
+    for c in ops["contours"]:                                    # cut path, tool centre
+        x0, y0 = P((c["x0"], c["y0"])); x1, y1 = P((c["x1"], c["y1"]))
+        out.append(f'<rect x="{x0:.1f}" y="{y0:.1f}" width="{x1 - x0:.1f}" height="{y1 - y0:.1f}" '
+                   f'fill="none" stroke="{col["cut"]}" stroke-width="0.6" stroke-dasharray="4 3"/>')
+    for d in ops["dados"]:                                       # dados
+        (ax, ay), (bx, by) = P(d["a"]), P(d["b"])
+        out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" '
+                   f'stroke="{col["dado"]}" stroke-width="{max(d["width"] * scale, 2.2):.1f}" opacity="0.85"/>')
+    for g in ops["grooves"]:                                     # Clamex P-14 slot
+        gx, gy = P((g["x"], g["y"]))
+        out.append(f'<rect x="{gx - 6:.1f}" y="{gy - 2:.1f}" width="12" height="4" rx="2" '
+                   f'fill="{col["clamex"]}"/>')
+    for pl in sheet.placements:                                  # edge bores
+        for o in pl.part.machining:
+            if o["op"] != "edge_drill":
+                continue
+            a, b = _edge_points(pl, o)
+            (ax, ay), (bx, by) = P(a), P(b)
+            out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" '
+                       f'stroke="{col["edge"]}" stroke-width="1.6"/>'
+                       f'<circle cx="{ax:.1f}" cy="{ay:.1f}" r="1.6" fill="{col["edge"]}"/>')
+    for b in ops["bores"]:                                       # face bores, to scale
+        bx, by = P((b["x"], b["y"]))
+        k = _bore_kind(b)
+        r = max(b["dia_mm"] / 25.4 / 2 * scale, 1.7)
+        if k == "through":
+            out.append(f'<circle cx="{bx:.1f}" cy="{by:.1f}" r="{r:.1f}" fill="#000"/>')
+        else:
+            out.append(f'<circle cx="{bx:.1f}" cy="{by:.1f}" r="{r:.1f}" fill="{col[k]}" '
+                       f'fill-opacity="{0.35 if k == "cup" else 0.9}" stroke="{col[k]}" stroke-width="0.6"/>')
+    for pl in sheet.placements:                                  # labels on top
+        x, y = P((pl.x, pl.y))
+        w, h = pl.length * scale, pl.width * scale
+        if w > 24 and h > 18:
             tag = f" #{pl.seq}" if pl.seq else ""
-            out.append(f'<text x="{x + 3:.1f}" y="{y + 12:.1f}">{n}. {pl.label}{tag}</text>')
+            text = f"{order[id(pl)]}. {pl.label}{tag}"
+            fit = int((w - 6) / 5.8)                              # ~5.8 px per character
+            if len(text) > fit:                                  # narrow strip: cut-order number only
+                text = f"{order[id(pl)]}." if fit < 10 else text[:fit - 1] + "…"
+            out.append(f'<text x="{x + 3:.1f}" y="{y + 12:.1f}" paint-order="stroke" stroke="#fff" '
+                       f'stroke-width="2.5">{text}</text>')
+    lx, ly = 10, oy + H + 18                                     # legend
+    for k, c, name in _SVG_KEY:
+        if k in ("dado",):
+            sym = f'<line x1="{lx}" y1="{ly - 3}" x2="{lx + 12}" y2="{ly - 3}" stroke="{c}" stroke-width="3"/>'
+        elif k == "cut":
+            sym = f'<line x1="{lx}" y1="{ly - 3}" x2="{lx + 12}" y2="{ly - 3}" stroke="{c}" stroke-dasharray="3 2"/>'
+        elif k == "clamex":
+            sym = f'<rect x="{lx}" y="{ly - 5}" width="12" height="4" rx="2" fill="{c}"/>'
+        elif k == "edge":
+            sym = f'<line x1="{lx}" y1="{ly - 3}" x2="{lx + 12}" y2="{ly - 3}" stroke="{c}" stroke-width="1.6"/>'
+        else:
+            sym = f'<circle cx="{lx + 6}" cy="{ly - 3}" r="4" fill="{c}"/>'
+        out.append(sym + f'<text x="{lx + 16}" y="{ly}">{name}</text>')
+        lx += 18 + 6.2 * len(name) + 14
+        if lx > W - 150:                                         # wrap to a second row
+            lx, ly = 10, ly + 20
     out.append("</svg>")
     return "\n".join(out)

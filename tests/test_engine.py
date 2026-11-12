@@ -669,3 +669,16 @@ def test_sheet_larger_than_router_bed_is_rejected():
     r = compare_sheet_options(job, PRICING, material="WO-RIFT-34", machine=small_bed)
     ten = next(o for o in r["materials"][0]["options"] if o["option"] == "4x10")
     assert ten["fits_machine"] is False and "router bed" in ten["note"]
+
+
+def test_nest_diagram_draws_the_machining(tmp_path):
+    job = json.loads((ROOT / "examples" / "residential_kitchen.json").read_text())
+    r = run_job(job, PRICING, tmp_path)
+    svgs = [Path(p).read_text() for p in r["files"]["nest_svgs"]]
+    allsvg = "".join(svgs)
+    assert "#2e7d32" in allsvg            # shelf-pin holes
+    assert "#6a1b9a" in allsvg            # hinge cups on the door sheets
+    assert "#1565c0" in allsvg            # back dados
+    assert allsvg.count("<circle") > 500  # every bore is drawn, not just part outlines
+    mel = next(s for s in svgs if "MEL-WHT-34" in s)
+    assert "grain runs" not in mel        # melamine has no grain
