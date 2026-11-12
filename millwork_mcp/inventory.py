@@ -343,17 +343,27 @@ def purchase_list(inv: dict, pricing: dict) -> dict:
     for code, it in sorted(inv["items"].items()):
         avail = it["on_hand"] - res.get(code, 0)
         if avail < 0 or (it["reorder_point"] and avail <= it["reorder_point"]):
-            qty = max(-avail, 0) + (it["reorder_qty"] if avail <= it["reorder_point"] else 0)
+            short = max(-avail, 0)
+            restock = it["reorder_qty"] if avail <= it["reorder_point"] else 0
             pack = it.get("pack", 1) or 1
-            qty = math.ceil(qty / pack) * pack
+            qty = math.ceil((short + restock) / pack) * pack
             if qty <= 0:
                 continue
             cost = cat.get(code, {}).get("unit_cost", 0)
             jobs = sorted(j for j, v in inv["reservations"].items()
                           if v["status"] == "reserved" and code in v["lines"])
+            parts = []
+            if short:
+                parts.append(f"{_r(short)} short for reserved job{'s' if len(jobs) > 1 else ''} "
+                             f"{', '.join(jobs)}")
+            if restock:
+                parts.append(f"{_r(restock)} to restock (reorder quantity; available would "
+                             f"otherwise sit at or below the reorder point of {_r(it['reorder_point'])})")
+            if qty > short + restock:
+                parts.append(f"{_r(qty - short - restock)} more to round up to whole packs of {pack}")
             out.append({"code": code, "description": it["description"], "order_qty": _r(qty),
-                        "unit": it["unit"], "pack": pack,
-                        "why": ("short for reserved jobs" if avail < 0 else "at reorder point"),
+                        "unit": it["unit"], "pack": pack, "short_for_jobs": _r(short),
+                        "restock": _r(restock), "why": " + ".join(parts),
                         "for_jobs": jobs, "unit_cost": cost, "cost": round(qty * cost, 2)})
     return {"lines": out, "total": round(sum(o["cost"] for o in out), 2),
             "note": "A draft for a person to review and send; prices are the price-list figures."}

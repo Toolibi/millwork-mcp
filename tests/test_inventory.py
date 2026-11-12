@@ -72,7 +72,8 @@ def test_reserve_consume_and_remnants(store):
     # the purchase list picks the shortage up (plus topping back to the reorder point)
     pl = I.purchase_list(inv, PRICING)
     oak = next(l for l in pl["lines"] if l["code"] == "WO-RIFT-34")
-    assert oak["order_qty"] >= 2 and "R-2611" in oak["for_jobs"]
+    assert oak["order_qty"] == 8 and oak["short_for_jobs"] == 2 and oak["restock"] == 6
+    assert oak["why"].startswith("2 short for reserved job R-2611 + 6 to restock")
     # re-checking a reserved job doesn't count its own reservation twice
     again = I.job_needs(kitchen(), PRICING, inv)
     assert next(l for l in again["lines"] if l["code"] == "MEL-WHT-34")["reserved_for_other_jobs"] == 0
