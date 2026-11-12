@@ -27,6 +27,10 @@ def run_job(job_data: dict, pricing: dict, out_dir: str | Path,
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     job = job_from_dict(job_data)
+    from .models import bad_cabinets
+    bad = bad_cabinets(job)
+    if bad:
+        raise ValueError("Not exported - fix the schedule first: " + " | ".join(bad))
     mats = materials_from_pricing(pricing)
     machine = machine or machine_from_pricing(pricing)
     est = estimate_job(job, pricing, machine=machine)

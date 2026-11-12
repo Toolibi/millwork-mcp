@@ -51,6 +51,9 @@ def review_cabinet_schedule(job: dict) -> dict:
     nailer_material, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
     microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
     opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
+    List only cabinets: never add appliance openings (range, dishwasher, fridge) or gaps as
+    lines. against_wall defaults to true (wall cabinets get nailers) - only set false for a
+    cabinet that truly stands free.
     """
     j = job_from_dict(job)
     mats = materials_from_pricing(load_pricing(PRICING_PATH))
@@ -67,6 +70,9 @@ def build_cutlist(job: dict) -> dict:
     nailer_material, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
     microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
     opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
+    List only cabinets: never add appliance openings (range, dishwasher, fridge) or gaps as
+    lines. against_wall defaults to true (wall cabinets get nailers) - only set false for a
+    cabinet that truly stands free.
     """
     j = job_from_dict(job)
     mats = materials_from_pricing(load_pricing(PRICING_PATH))
@@ -129,6 +135,9 @@ def estimate_and_export(job: dict) -> dict:
     nailer_material, cabinets:[{tag, type: base|wall|tall|drawer_base|sink_base|bookcase|
     microwave, width, height, depth, qty, doors, drawers, adj_shelves, fixed_shelves,
     opening_height, finished_ends: ""|L|R|LR, joinery, against_wall, notes}]}
+    List only cabinets: never add appliance openings (range, dishwasher, fridge) or gaps as
+    lines. against_wall defaults to true (wall cabinets get nailers) - only set false for a
+    cabinet that truly stands free.
     """
     safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(job.get("job_number", "job")))[:64].lstrip(".") or "job"
     out = OUTPUT_ROOT / safe

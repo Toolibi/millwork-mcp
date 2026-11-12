@@ -11,6 +11,20 @@ from typing import Literal, Optional
 CabinetType = Literal["base", "wall", "tall", "drawer_base", "sink_base", "bookcase", "microwave"]
 BASE_TYPES = ("base", "drawer_base", "sink_base")
 OPEN_TYPES = ("bookcase", "microwave")   # interior is visible -> exposed material, grain rules
+CABINET_TYPES = ("base", "wall", "tall", "drawer_base", "sink_base", "bookcase", "microwave")
+
+
+def bad_cabinets(job: "Job") -> list[str]:
+    """Lines that are not buildable boxes - an AI reading a plan tends to add appliance
+    openings (range, dishwasher, fridge) or fillers as cabinets."""
+    out = []
+    for c in job.cabinets:
+        if c.type not in CABINET_TYPES:
+            out.append(f"{c.tag}: '{c.type}' is not a cabinet type ({', '.join(CABINET_TYPES)}). "
+                       "Appliance openings and gaps are not cabinets - remove this line")
+        elif c.width <= 0 or c.height <= 0 or c.depth <= 0:
+            out.append(f"{c.tag}: width, height and depth must all be greater than 0")
+    return out
 
 
 @dataclass

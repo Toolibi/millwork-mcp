@@ -409,7 +409,10 @@ def build_job_parts(job: Job, std: ConstructionStandard | None = None,
 
 
 def review_job(job: Job, materials: dict[str, Material] | None = None) -> list[str]:
-    flags = []
+    from .models import bad_cabinets
+    flags = bad_cabinets(job)
+    if flags:
+        return flags        # nothing else is meaningful until every line is a real box
     tags = [c.tag for c in job.cabinets]
     for d in sorted({t for t in tags if tags.count(t) > 1}):
         flags.append(f"Duplicate cabinet tag {d} - merge into one line with qty or rename")

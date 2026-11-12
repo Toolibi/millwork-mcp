@@ -682,3 +682,13 @@ def test_nest_diagram_draws_the_machining(tmp_path):
     assert allsvg.count("<circle") > 500  # every bore is drawn, not just part outlines
     mel = next(s for s in svgs if "MEL-WHT-34" in s)
     assert "grain runs" not in mel        # melamine has no grain
+
+
+def test_appliance_gaps_are_flagged_and_never_exported(tmp_path):
+    # Found in a live Foundry run: the agent listed the range and dishwasher as "gap" cabinets
+    job = json.loads((ROOT / "examples" / "residential_kitchen.json").read_text())
+    job["cabinets"].append({"tag": "RANGE", "type": "gap", "width": 30, "height": 0, "depth": 0})
+    flags = review_job(job_from_dict(job), materials_from_pricing(PRICING))
+    assert any("RANGE" in f and "not a cabinet type" in f for f in flags)
+    with pytest.raises(ValueError, match="Not exported"):
+        run_job(job, PRICING, tmp_path)
