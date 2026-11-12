@@ -17,8 +17,17 @@ CABINET_TYPES = ("base", "wall", "tall", "drawer_base", "sink_base", "bookcase",
 def bad_cabinets(job: "Job") -> list[str]:
     """Lines that are not buildable boxes - an AI reading a plan tends to add appliance
     openings (range, dishwasher, fridge) or fillers as cabinets."""
+    import re
+    appliance = re.compile(r"\b(range|stove|cooktop|oven|dishwasher|dw|dish|fridge|refrigerator|"
+                           r"ref|washer|dryer|wine cooler)\b", re.I)
     out = []
     for c in job.cabinets:
+        words = f"{c.tag} {c.notes or ''}".replace("_", " ").replace("-", " ")
+        if (c.type not in OPEN_TYPES and not c.doors and not c.drawers
+                and appliance.search(words) and "over" not in (c.notes or "").lower()):
+            out.append(f"{c.tag}: looks like an appliance opening ({c.notes or c.tag}), not a "
+                       "cabinet - no doors or drawers. Remove this line; openings are not built")
+            continue
         if c.type not in CABINET_TYPES:
             out.append(f"{c.tag}: '{c.type}' is not a cabinet type ({', '.join(CABINET_TYPES)}). "
                        "Appliance openings and gaps are not cabinets - remove this line")

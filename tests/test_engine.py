@@ -689,6 +689,24 @@ def test_appliance_gaps_are_flagged_and_never_exported(tmp_path):
     job = json.loads((ROOT / "examples" / "residential_kitchen.json").read_text())
     job["cabinets"].append({"tag": "RANGE", "type": "gap", "width": 30, "height": 0, "depth": 0})
     flags = review_job(job_from_dict(job), materials_from_pricing(PRICING))
-    assert any("RANGE" in f and "not a cabinet type" in f for f in flags)
+    assert any("RANGE" in f and ("not a cabinet type" in f or "appliance opening" in f) for f in flags)
+    job["cabinets"][-1]["tag"] = "X9"; job["cabinets"][-1]["notes"] = ""
+    assert any("X9" in f and "not a cabinet type" in f
+               for f in review_job(job_from_dict(job), materials_from_pricing(PRICING)))
     with pytest.raises(ValueError, match="Not exported"):
         run_job(job, PRICING, tmp_path)
+
+
+def test_appliance_opening_disguised_as_a_base_is_caught(tmp_path):
+    # Second live run: the agent re-labelled the range and dishwasher as type "base"
+    job = json.loads((ROOT / "examples" / "residential_kitchen.json").read_text())
+    job["cabinets"] += [
+        {"tag": "RANGE", "type": "base", "width": 30, "height": 34.5, "depth": 24, "notes": "range opening"},
+        {"tag": "DISH", "type": "base", "width": 24, "height": 34.5, "depth": 24, "notes": "dishwasher opening"}]
+    flags = review_job(job_from_dict(job), materials_from_pricing(PRICING))
+    assert sum("appliance opening" in f for f in flags) == 2
+    with pytest.raises(ValueError, match="Not exported"):
+        run_job(job, PRICING, tmp_path)
+    # a real cabinet over the fridge is not caught by the word "fridge"
+    ok = json.loads((ROOT / "examples" / "residential_kitchen.json").read_text())
+    assert review_job(job_from_dict(ok), materials_from_pricing(PRICING)) == []
