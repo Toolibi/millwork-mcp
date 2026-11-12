@@ -52,7 +52,7 @@ say "Building the image in Azure and deploying (takes a few minutes)"
 az containerapp up \
   --name "$APP" --resource-group "$RG" --location "$LOCATION" \
   --environment "$ENV_NAME" --source . \
-  --ingress external --target-port 8000 --only-show-errors -o none
+  --ingress external --target-port 8000
 
 FQDN="$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)"
 
