@@ -298,14 +298,28 @@ def job_needs(job: Job, pricing: dict, inv: dict, use_remnants: bool = True,
         avail = it["on_hand"] - res.get(code, 0)
         short = max(0, q - max(avail, 0))
         cost = cat.get(code, {}).get("unit_cost", 0)
-        lines.append({"code": code, "description": it["description"], "unit": it["unit"],
-                      "need": _r(q), "on_hand": _r(it["on_hand"]),
+        row = {"code": code, "description": it["description"], "unit": it["unit"],
+               "need": _r(q)}
+        if saved.get(code):
+            row["need_without_remnants"] = _r(q + saved[code])
+        lines.append({**row, "on_hand": _r(it["on_hand"]),
                       "reserved_for_other_jobs": _r(res.get(code, 0)),
                       "available": _r(avail), "short": _r(short)})
         if short:
             buy.append({"code": code, "description": it["description"], "qty": _r(short),
                         "unit": it["unit"], "unit_cost": cost, "cost": round(short * cost, 2)})
+    summary = []
+    for l in lines:
+        if l["code"] in saved:
+            summary.append(f'{l["code"]}: need {l["need"]} full sheets after using offcuts '
+                           f'({l["need_without_remnants"]} without them), {l["available"]} available, '
+                           f'short {l["short"]}. The offcut saving is already counted in "need" and "short".')
+        elif l["short"]:
+            summary.append(f'{l["code"]}: need {l["need"]} {l["unit"]}, {l["available"]} available, short {l["short"]}.')
+    summary.append("Everything else is in stock." if len(summary) < len(lines) else "")
     return {"job_number": job.job_number,
+            "summary": [x for x in summary if x],
+            "review_flags": est["review_flags"],
             "lines": lines,
             "ready_to_cut": not buy,
             "shortages": buy,

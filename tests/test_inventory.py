@@ -54,6 +54,8 @@ def test_shortage_and_remnants(store):
     assert r["sheets_saved_by_remnants"] == {"WO-RIFT-34": 1}
     assert oak["need"] == 6 and oak["short"] == 2 and not r["ready_to_cut"]
     assert r["shortage_cost"] == 330.0 and r["remnant_note"]
+    assert oak["need_without_remnants"] == 7 and "already counted" in r["summary"][0]
+    assert all("Machine profile" in f for f in r["review_flags"])
     # grain-matched fronts never go on offcuts
     for plan in r["remnant_plan"]:
         for u in plan["remnants"]:
