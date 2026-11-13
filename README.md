@@ -12,15 +12,15 @@ Live runs of a Microsoft Foundry agent (gpt-5-mini) calling this MCP server on A
 
 **1. Residential kitchen:** review catches two schedule problems, then estimate, nests and shop files
 
-VIDEO-1-GOES-HERE
+https://github.com/user-attachments/assets/e5337693-edad-4210-897b-336a3867fadc
 
 **2. 24 hospital patient rooms:** 120 cabinets, 1,632 parts, one call
 
-VIDEO-2-GOES-HERE
+https://github.com/user-attachments/assets/f17afa7a-f94a-4e45-8e24-3d9485f6bba3
 
 **3. Inventory control:** stock check, offcuts, reserve, purchase list, receive, cut
 
-VIDEO-3-GOES-HERE
+https://github.com/user-attachments/assets/4bf8972f-e6b8-4d12-a258-fb42a98caca6
 
 ## The problem
 
