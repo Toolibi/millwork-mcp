@@ -6,6 +6,22 @@
 
 Built by a 20-year cabinet/millwork and CNC programmer to show how AI gets deployed into a non-software industry the right way: the model reads drawings and talks to people; deterministic code does everything that has to be exact.
 
+## Demos
+
+Live runs of a Microsoft Foundry agent (gpt-5-mini) calling this MCP server on Azure. Each step that writes shop files or changes stock waits for a person to approve it.
+
+**1. Residential kitchen:** review catches two schedule problems, then estimate, nests and shop files
+
+VIDEO-1-GOES-HERE
+
+**2. 24 hospital patient rooms:** 120 cabinets, 1,632 parts, one call
+
+VIDEO-2-GOES-HERE
+
+**3. Inventory control:** stock check, offcuts, reserve, purchase list, receive, cut
+
+VIDEO-3-GOES-HERE
+
 ## The problem
 
 In a custom cabinet shop, one job goes through the same manual chain every time:
