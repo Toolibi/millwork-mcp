@@ -18,6 +18,7 @@ import re
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from .construction import build_parts, review_job
 from .estimate import load_pricing, materials_from_pricing
@@ -43,7 +44,20 @@ NOTICE = ("millwork-mcp (c) 2026 Prince Boafo. Source-available under the PolyFo
 
 mcp = FastMCP("millwork", instructions=NOTICE)
 
-@mcp.tool()
+
+def _ann(title: str, *, read_only: bool = False, destructive: bool = False,
+         idempotent: bool = False) -> ToolAnnotations:
+    """Tool hints so MCP hosts can tell read-only tools from ones that change stock or files.
+    Nothing here reaches outside the shop's own pricing, inventory and output folder."""
+    return ToolAnnotations(title=title, readOnlyHint=read_only,
+                           destructiveHint=False if read_only else destructive,
+                           idempotentHint=True if read_only else idempotent,
+                           openWorldHint=False)
+
+
+READ = dict(read_only=True)
+
+@mcp.tool(annotations=_ann("Review cabinet schedule", **READ))
 def review_cabinet_schedule(job: dict) -> dict:
     """Check a cabinet schedule extracted from drawings for likely errors before estimating.
     Returns review flags (duplicate tags, odd sizes, oversized doors, sink-base drawers,
@@ -64,7 +78,7 @@ def review_cabinet_schedule(job: dict) -> dict:
     return {"cabinets": len(j.cabinets), "flags": review_job(j, mats)}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Build cut list", **READ))
 def build_cutlist(job: dict) -> dict:
     """Explode a cabinet schedule into a part-by-part cut list using the shop's
     construction standard (frameless, 32mm system).
@@ -86,7 +100,7 @@ def build_cutlist(job: dict) -> dict:
     return {"part_lines": len(parts), "parts": parts}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Nest sheets for the machine", **READ))
 def nest_sheets(job: dict, material: str) -> dict:
     """Nest one material for the shop's machine.
 
@@ -112,7 +126,7 @@ def nest_sheets(job: dict, material: str) -> dict:
     return {**res.summary(), "machine": machine.name, "saw_list": saw_cut_list(res)}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Get machine profile", **READ))
 def get_machine_profile() -> dict:
     """The shop's machine profile (nested router or panel saw), with each setting's source:
     shop-confirmed, from a real program, or assumed. Anything assumed must be confirmed
@@ -125,7 +139,7 @@ def get_machine_profile() -> dict:
             "unconfirmed": m.unconfirmed()}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Estimate job and export shop files", idempotent=True))
 def estimate_and_export(job: dict) -> dict:
     """Full run: cut list, nesting, estimate (materials, edgebanding, hardware, labor with
     hours broken down into machining, edgebanding, assembly, doors and drawers, overhead,
@@ -148,7 +162,7 @@ def estimate_and_export(job: dict) -> dict:
     return {**run_job(job, load_pricing(PRICING_PATH), out), "license": NOTICE}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Compare sheet sizes", **READ))
 def compare_sheet_sizes(job: dict, material: str = "") -> dict:
     """Nest the job on every sheet size (and core) the supplier sells - 4x8, 5x8, 4x10,
     5x10... - and compare sheets, yield, material cost and router time per material, with a
@@ -160,7 +174,7 @@ def compare_sheet_sizes(job: dict, material: str = "") -> dict:
                                  material=material or None)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("List joinery methods", **READ))
 def list_joinery_methods() -> dict:
     """Case joinery methods the engine can machine, with how each one is laid out."""
     return {k: {"name": m.name, "pitch_mm": m.pitch_mm, "glued": m.glue,
@@ -168,7 +182,7 @@ def list_joinery_methods() -> dict:
                 "how": m.description} for k, m in METHODS.items()}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Get pricing table", **READ))
 def get_pricing() -> dict:
     """Return the pricing table in use so the assistant can explain an estimate."""
     return load_pricing(PRICING_PATH)
@@ -178,7 +192,7 @@ def get_pricing() -> dict:
 # Read-only: inventory_status, check_job_materials, purchase_list.
 # Change stock (require approval in the agent): everything else.
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Inventory status", **READ))
 def inventory_status(code: str = "", low_only: bool = False) -> dict:
     """Stock on hand, reserved for released jobs, and available, for sheet goods
     (material codes), edgebanding (EB-<material code>, in lineal feet) and hardware (HW-...),
@@ -189,7 +203,7 @@ def inventory_status(code: str = "", low_only: bool = False) -> dict:
     return inv_mod.status(INVENTORY.read(), p, code.strip(), low_only)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Check job materials against stock", **READ))
 def check_job_materials(job: dict, use_remnants: bool = True) -> dict:
     """Before releasing a job to the shop: what it takes from stock (sheets from the actual
     nest, edgebanding per material, hardware counted from the construction), what is short,
@@ -199,7 +213,7 @@ def check_job_materials(job: dict, use_remnants: bool = True) -> dict:
     return inv_mod.job_needs(job_from_dict(job), p, INVENTORY.read(), use_remnants)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Draft purchase list", **READ))
 def purchase_list() -> dict:
     """Draft order: shortages for reserved jobs plus items at their reorder point, rounded
     up to pack size (edgebanding rolls, hardware boxes), with costs. A draft for a person to
@@ -207,7 +221,7 @@ def purchase_list() -> dict:
     return inv_mod.purchase_list(INVENTORY.read(), load_pricing(PRICING_PATH))
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Reserve job materials", idempotent=True))
 def reserve_job_materials(job: dict, use_remnants: bool = True) -> dict:
     """Set stock aside for a job released to the shop (sheets, edgebanding, hardware and the
     offcuts the plan uses). Re-running for the same job_number replaces its reservation.
@@ -218,7 +232,7 @@ def reserve_job_materials(job: dict, use_remnants: bool = True) -> dict:
         return inv_mod.reserve(inv, p, job_from_dict(job), use_remnants)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Consume job materials", destructive=True))
 def consume_job_materials(job_number: str, remnants_left: list[dict] = [],  # noqa: B006
                           note: str = "") -> dict:
     """The job has been cut: take its reserved quantities off on-hand and remove the offcuts
@@ -230,7 +244,7 @@ def consume_job_materials(job_number: str, remnants_left: list[dict] = [],  # no
         return inv_mod.consume(inv, job_number, list(remnants_left or []), p, note)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Release job reservation", destructive=True, idempotent=True))
 def release_job_materials(job_number: str) -> dict:
     """Cancel a job's reservation and put the stock back to available. CHANGES STOCK -
     confirm with the user first."""
@@ -238,7 +252,7 @@ def release_job_materials(job_number: str) -> dict:
         return inv_mod.release(inv, job_number)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Receive stock delivery"))
 def receive_stock(code: str, qty: float, note: str = "") -> dict:
     """Add a delivery to on-hand (sheets and hardware in whole units, edgebanding in lineal
     feet). Put the PO or packing-slip number in note. CHANGES STOCK - confirm with the user
@@ -248,7 +262,7 @@ def receive_stock(code: str, qty: float, note: str = "") -> dict:
         return inv_mod.receive(inv, p, code.strip(), qty, note)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Record physical stock count", destructive=True, idempotent=True))
 def count_stock(code: str, counted_qty: float, note: str = "",
                 reorder_point: float = -1, reorder_qty: float = -1, pack: int = 0,
                 location: str = "") -> dict:
@@ -268,7 +282,7 @@ def count_stock(code: str, counted_qty: float, note: str = "",
         return out
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Log or remove remnant", destructive=True))
 def log_remnant(material: str, length: float, width: float, location: str = "",
                 note: str = "", remove_id: str = "") -> dict:
     """Put an offcut on the remnant rack (length along the grain, inches, 12" minimum), or
