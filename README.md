@@ -4,7 +4,9 @@
 
 **An MCP server that gives an AI assistant real cabinet-shop tools: drawing review, takeoffs, estimating, panel-saw nesting, and CNC-ready DXF output.**
 
-Built by a 20-year cabinet/millwork and CNC programmer to show how AI gets deployed into a non-software industry the right way: the model reads drawings and talks to people; deterministic code does everything that has to be exact.
+Built with Claude Code by Prince Boafo, a 20-year cabinet/millwork and CNC programmer, to show how AI gets deployed into a non-software industry the right way: the model reads drawings and talks to people; deterministic code does everything that has to be exact.
+
+> **How it was made:** the code was written with Claude Code. The shop knowledge behind it (32mm joinery and dowel spacing, construction standards, nesting and panel-saw practice, what a CNC operator needs to see before cutting), the design decisions, and the testing on Azure are mine.
 
 ## Demos
 
